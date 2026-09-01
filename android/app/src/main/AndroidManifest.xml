@@ -50,6 +50,10 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Keep the runtime-resolved notification icon in release builds. -->
+        <meta-data
+            android:name="dev.resteye.app.notificationIcon"
+            android:resource="@drawable/ic_stat_rest_eye" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

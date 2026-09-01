@@ -1,7 +1,7 @@
 name: rest_eye
 description: "RestEye（眸息）跨平台护眼提醒。"
 publish_to: none
-version: 1.0.0+1
+version: 1.0.0
 
 environment:
   sdk: ^3.13.2

@@ -195,6 +195,28 @@ flutter build windows --release # Windows 主机可执行
 
 涉及计时、通知、设置、屏幕状态、统计、生命周期或 UI 的变更，必须执行适用的静态分析和平台构建；平台运行冒烟由用户完成。Android 使用 Pixel 9/ADB 验证时，应核对 UI 树、系统电源状态、通知状态和崩溃缓冲区；Windows 至少验证启动、窗口响应和关闭；macOS 只能在 macOS 主机完成构建和运行验证。
 
+### 12.1 Android GitHub 发布构建
+
+GitHub 直接下载发布默认只提供 `arm64-v8a` APK，不构建或发布通用 APK、`armeabi-v7a` 或 `x86_64`，除非有明确需求。标准入口为：
+
+```powershell
+.\tool\build_resteye_android.ps1
+```
+
+脚本从 `pubspec.yaml` 读取版本名，要求本机存在被 Git 忽略的 `android/key.properties`，执行 `flutter build apk --release --split-per-abi --target-platform android-arm64`，并将结果复制为 `artifacts/RestEye-<version>-android-arm64-v8a.apk`。`.jks` 私钥和 `key.properties` 只保存在本机；`PUB_CACHE` 应配置在与项目相同的磁盘，以避免 Windows Kotlin 增量编译器的跨盘缓存路径错误。发布前应保留 APK SHA-256，并确认 Release 签名证书未发生变化。
+
+本地 Debug 安装使用 `tool/build_resteye_android_debug.ps1`。Android Debug build type 使用 `applicationIdSuffix = ".debug"` 和 `versionNameSuffix = "-debug"`，包名为 `dev.resteye.app.debug`，产物为 `artifacts/RestEye-<version>-android-arm64-v8a-debug.apk`，可与 Release 包同时安装；Debug 包只用于本地开发和验收，不作为 GitHub 正式发布包。
+
+### 12.2 Windows 安装包发布
+
+GitHub Windows 发布使用 Inno Setup 生成 x64 安装程序，标准入口为：
+
+```powershell
+.\tool\build_resteye_windows.ps1
+```
+
+脚本从 `pubspec.yaml` 读取版本，执行 `flutter build windows --release`，将完整的 `build/windows/x64/runner/Release/` 目录（包括 `rest_eye.exe`、Flutter 引擎 DLL、插件 DLL 和 `data/`）打包为 `artifacts/RestEye-<version>-windows-x64-setup.exe`。安装默认使用当前用户目录，不要求管理员权限；卸载不删除 RestEye 用户数据。发布前应保留安装程序 SHA-256。安装器配置位于 `tool/RestEye.iss`，不应只分发单独的可执行文件。
+
 ## 13. 演进方式
 
 新功能优先放入对应 feature；只有两个以上 feature 稳定复用的非业务能力才能进入 `core/`。新增平台能力先定义 application port，再实现 Android、Windows、macOS adapter；不要让平台差异污染 domain。改变依赖方向、持久化格式、状态机语义或共享通道时，先更新本文档并记录 ADR，再编码。桌面托盘/菜单栏协议必须保持 action id、文案字段和事件通道在 Windows/macOS 一致，新增计时动作先扩展共享 port 与 Dart 映射，再改原生菜单。保持 `main.dart` 极小、文件职责单一、命名清晰，并在交付前说明变更文件、验证命令、未验证平台和已知限制。

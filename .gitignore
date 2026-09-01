@@ -74,10 +74,9 @@ desktop.ini
 *.p12
 key.properties
 
-# Repository documentation policy: keep only the architecture and requirements
-# documents under version control.
+# Keep the public README, architecture, and requirements under version control;
+# keep internal agent guidance and other working documents local.
 /AGENTS.md
-/README.md
 /docs/*
 !/docs/architecture.md
 !/docs/requirements.md
