@@ -1,0 +1,124 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Widget Preview related
+.widget_preview/
+
+# Local/generated Flutter and native build state
+.flutter-plugins
+**/.gradle/
+**/build/
+**/flutter/ephemeral/
+**/local.properties
+/artifacts/
+/coverage/
+
+# IDE and operating-system files
+.vscode/
+.vs/
+*.code-workspace
+*.suo
+*.user
+Thumbs.db
+desktop.ini
+
+# Local environment and signing credentials
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p12
+key.properties
+
+# Repository documentation policy: keep only the architecture and requirements
+# documents under version control.
+/AGENTS.md
+/README.md
+/docs/*
+!/docs/architecture.md
+!/docs/requirements.md
+
+# macOS system metadata and Finder files
+.AppleDouble
+.LSOverride
+._*
+Icon?
+.Spotlight-V100/
+.Trashes/
+.fseventsd
+.TemporaryItems/
+.DocumentRevisions-V100/
+.apdisk
+*.icloud
+
+# Xcode user state and local build outputs
+**/DerivedData/
+**/xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.dSYM/
+*.xcarchive/
+
+# Flutter desktop and Apple dependency directories
+**/Pods/
+**/.symlinks/
+**/Flutter/ephemeral/
+
+# Native build/cache outputs not always placed under build/
+**/.cxx/
+**/.externalNativeBuild/
+*.apk
+*.aab
+*.ipa
+
+# Additional local temporary files
+*.tmp
+*.temp
+*.bak
+*.orig

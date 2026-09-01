@@ -1,0 +1,200 @@
+# RestEye（眸息）系统架构与开发规范
+
+## 1. 项目目的与文档优先级
+
+RestEye 是一个本地优先的 20-20-20 护眼提醒工具：默认工作 20 分钟、休息 20 秒，支持自定义工作/休息时长、未休息重复提醒、超时处理、系统通知动作、锁屏暂停，以及工作时长、休息时长和次数统计。目标平台是 Android、Windows 和 macOS；三端共享 Flutter 业务代码、状态规则和 Material 3 界面，系统通知、屏幕状态和生命周期通过原生适配层接入。
+
+本项目没有账号、网络同步或云端数据，用户数据默认只保存在本机 SQLite。产品行为以 `docs/requirements.md` 为准；代码组织、依赖方向和实现约束以本文档为准；根目录 `AGENTS.md` 是给贡献者和后续 AI 的快速执行摘要。开始修改前必须先阅读 `AGENTS.md`、本文档和需求文档。
+
+## 2. 技术基线与依赖
+
+当前基线为 Flutter 3.47.2、Dart 3.13.2，`pubspec.yaml` 的 SDK 约束为 `^3.13.2`。Android `minSdk` 为 24，`compileSdk`/`targetSdk` 统一为 36。Windows 主机只构建 Android 和 Windows；macOS 构建暂缓。macOS 主机可以构建 macOS，Windows 构建可暂缓。
+
+| 依赖 | 用途 | 规则 |
+| --- | --- | --- |
+| Flutter Material 3、`flutter_localizations` | 跨平台 UI、主题和官方本地化 | 优先官方组件，不为每个平台复制视觉系统 |
+| `flutter_riverpod` 3.0 | Provider 装配和展示状态订阅 | 只在 application/presentation/app 装配层使用 |
+| `drift`、`drift_flutter` | SQLite schema、事务、迁移和查询 | 通过 repository 暴露，禁止泄漏 Drift 行对象 |
+| `flutter_local_notifications` 22.3.0、`timezone` | Android/Windows/macOS 原生通知和时区调度 | 只能由 notification gateway 包装 |
+| `package_info_plus` | 关于页读取当前平台应用版本 | 仅在 presentation 的版本展示处使用，不将版本号硬编码在 Dart UI 中 |
+| `intl`、Flutter `gen_l10n` | 文案、日期、时长和复数格式化 | 用户可见文本不得硬编码 |
+| `build_runner`、`drift_dev`、`flutter_lints` | 生成代码和开发检查 | 仅用于开发，不引入测试框架 |
+
+新增依赖必须说明用途、三端支持、维护状态、许可证、替代方案和体积/复杂度代价。领域层不得依赖任何第三方类型；平台插件不得越过 gateway 进入业务层。
+
+## 3. 总体架构与依赖方向
+
+采用单 Flutter package 的 **feature-first + 分层架构**。依赖方向必须指向领域抽象，具体实现由 bootstrap 组合：
+
+```mermaid
+flowchart LR
+    UI[Presentation\nMaterial 3] --> APP[Application\nControllers / Coordinators]
+    APP --> DOMAIN[Domain\nEntities / Reducer / Repository ports]
+    APP --> PORTS[Application ports\nPlatform contracts]
+    DATA[Feature data\nDrift repositories] --> DOMAIN
+    PLATFORM[Platform adapters\nNative plugins / channels] --> PORTS
+    BOOT[App bootstrap\nRiverpod composition] --> UI
+    BOOT --> APP
+    BOOT --> DATA
+    BOOT --> PLATFORM
+    CORE[Core\nClock / Errors / Logging] --> APP
+    CORE --> DOMAIN
+```
+
+`app/bootstrap` 可以依赖所有具体实现，但不能承载业务规则。`presentation` 不得直接访问数据库、插件或平台通道；`domain` 不得反向依赖 application、data、presentation、Flutter、Riverpod、Drift 或原生代码；`core` 不得依赖任何 feature。跨 feature 协作使用公开的 domain/application 接口，不得直接访问其他 feature 的内部文件。
+
+## 4. 当前目录结构
+
+```text
+lib/
+├── main.dart                         # 仅启动 bootstrap
+├── app/
+│   ├── bootstrap/                    # 运行时资源装配和生命周期
+│   ├── navigation/                   # 顶层导航与页面壳
+│   ├── theme/                        # Material 3 主题、间距
+│   └── rest_eye_app.dart             # MaterialApp 配置
+├── core/
+│   ├── clock/                        # AppClock、系统时钟
+│   ├── error/                        # AppFailure 及错误分类
+│   └── logging/                      # AppLogger
+├── features/
+│   ├── timer/{domain,application,data,presentation}/
+│   ├── settings/{domain,application,data,presentation}/
+│   ├── statistics/{domain,application,data,presentation}/
+│   └── about/presentation/
+├── infrastructure/database/          # AppDatabase、tables、生成的 Drift 文件
+├── platform/                         # 通知、生命周期、屏幕状态、窗口行为实现
+└── l10n/{arb,generated}/             # ARB 源文件和生成文件
+```
+
+Android 原生代码位于 `android/`，Windows runner、屏幕状态桥接和系统托盘位于 `windows/runner/`，macOS runner、菜单栏状态项和 Swift 屏幕状态桥接位于 `macos/Runner/`。窗口行为通过 `WindowBehaviorGateway` 隔离；不要在页面或业务层直接调用 Win32 或 AppKit API。
+
+## 5. 各层职责
+
+### 5.1 App 与 Bootstrap
+
+`main.dart` 只负责调用 `bootstrap()`。bootstrap 创建数据库、repositories、clock、notification gateway、screen-state gateway、dispatcher 和 runtime，并通过 Riverpod Provider overrides 注入；它不处理按钮逻辑、计时规则或翻译文案。`AppRuntime` 统一拥有并按顺序释放订阅、计时器、通知、平台桥接和数据库资源；释放必须可等待、幂等，单个组件失败不能阻断其余清理。
+
+### 5.2 Core
+
+只放跨 feature 且稳定的基础能力：`AppClock` 同时提供 UTC 墙上时间和进程内单调 elapsed 时间；`AppFailure` 区分校验、持久化、权限、平台和未知错误；`AppLogger` 是日志抽象。禁止添加只被一个 feature 使用的业务模型，也禁止创建无边界的 `utils.dart`/`helpers.dart`。
+
+### 5.3 Domain
+
+领域模型必须是纯 Dart、不可变、可序列化且可独立推理。计时规则由 `TimerReducer`、`TimerSnapshot`、`TimerCommand`、`TimerEvent` 和 `TimerTransition` 表达；repository interface 和平台 port 只定义抽象契约。非法配置在入口拒绝，枚举持久化使用稳定字符串，不使用 ordinal。领域层不执行通知、写库、启动 Timer 或读取 Flutter 生命周期。
+
+从持久化读取的配置类未知枚举（主题、语言、超时处理）可以安全回退到默认值，并保留其他设置；回退必须集中在 mapper/repository 边界，不能把未知值传播到领域层。计时快照中的未知枚举、缺失必需字段或不满足不变量的数据仍属于不可恢复输入，应进入独立失败页且不得清空数据库。
+
+### 5.4 Application
+
+应用层编排用例和副作用：`TimerCommandDispatcher` 串行执行所有计时变更；`TimerRuntime` 负责 deadline reconciliation 和显示 tick（只有活动计时运行显示计时器）；`NotificationScheduleReconciler` 将快照转换为幂等通知计划，并通过内部队列按最新 generation 收敛；`NotificationActionCoordinator` 将通知动作标准化为命令并按 FIFO 串行处理；`ScreenLockPauseController` 将锁屏状态转换为暂停/恢复命令；`AppSettingsChangeEffects` 将已保存的设置同步到锁屏暂停、通知、方向和窗口行为；settings/statistics controller 只提供不可变 UI state 和明确操作。
+
+`SettingsController` 是所有界面设置写入的唯一入口。有效修改先更新不可变 draft，再短暂防抖并串行持久化；保存过程中出现的新修改必须在前一次完成后继续保存，旧结果不得覆盖新 draft。非法设置组合只保留为带校验错误的 draft，不写入数据库；持久化提交成功后才发布新的 saved 状态并执行锁屏暂停、通知重排程等副作用。设置页不提供独立的全局保存按钮，首页快捷时长弹窗也复用同一 controller。
+
+UI 按钮、通知动作、锁屏暂停和恢复流程都必须复用同一命令/reducer 管线，禁止各自直接修改快照。所有外部动作至少携带 `commandId`、`occurredAtUtc`、目标 `cycleId`、expected phase 和 expected revision；过期动作必须被忽略而不是强行覆盖当前轮次。
+
+### 5.5 Data 与 Infrastructure
+
+feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model 与 Drift row 之间转换；`infrastructure/database/` 只负责数据库、表和迁移。当前 schema version 为 10，`screen_activity_state` 保存尚未关闭的亮屏区间，`app_settings_table.pause_when_locked` 保存锁屏暂停偏好，`fixed_portrait_enabled` 保存 Android 固定竖屏偏好，`minimize_to_tray_on_close` 保存 Windows 关闭行为偏好，`work_reminder_enabled`、`rest_reminder_enabled` 和 `missed_rest_reminder_enabled` 保存三类通知开关，默认均为 `true`。`activity_events_table.local_date_key`、`occurred_at_utc` 和 pending command 的终态/时间列有索引，以支持统计查询和恢复扫描。v6 将旧列名平滑迁移为新语义，v7 为既有设置补充托盘偏好，v8 移除已废弃的自动模式字段，v9 为既有设置补充三类通知开关，v10 增加查询索引，不清除其他已有设置。计时快照、关键事件和 inbox command 的状态变更必须使用事务；恢复事件通过 Drift batch 写入，终态 inbox command 保留 30 天后清理，未处理命令恢复扫描最多读取 10,000 条；持久化失败不得发布未提交的内存状态。数据库升级必须增加显式 migration，禁止删除用户数据或通过重建数据库“修复”坏数据。
+
+### 5.6 Presentation
+
+页面和 widget 只负责 Material 3 布局、输入、语义和状态渲染，通过 Riverpod controller 发起操作。不得在 `build` 中创建订阅、Timer、通知或数据库写入；异步回调使用 `BuildContext` 前检查 `mounted`。可复用组件保持小而专一，页面不承担平台生命周期和持久化职责。
+
+## 6. 计时状态与时间规则
+
+计时 phase 为：
+
+| phase | 含义 |
+| --- | --- |
+| `idle` | 未开始 |
+| `working` | 工作计时，首页显示已工作时长 |
+| `awaitingRest` | 工作完成，等待用户开始或跳过休息，重复提醒在此阶段发生 |
+| `resting` | 用户已开始休息的计时，首页显示已休息时长 |
+
+`executionStatus` 与 phase 正交，当前为 `active`/`suspended`。开启 `pauseWhenLocked` 后，只有 `working` 会因锁屏变为 `suspended`；解锁/恢复后继续同一 `cycleId`，不重新创建轮次；`awaitingRest` 和 `resting` 不因锁屏改变。若未来需要区分手动暂停、系统挂起等原因，应增加 suspension reason，不复制 phase。
+
+工作达到设定时长后进入 `awaitingRest` 并发出工作完成通知：主进度固定为 100%，显示的“已工作”时长继续累加，等待期间视为超时工作。开始休息、跳过休息、停止计时或等待超时结束该阶段时，必须将超时工作追加为 `workCompleted` 事件，因而计入工作统计；完整休息完成后进入下一轮工作。用户跳过休息或等待超时均不计为完整休息。超时行为由当前轮配置快照决定：`nextCycle` 为默认值，进入下一轮；`stopTimer` 回到 `idle`。设置保存只影响下一轮，当前轮不得被悄悄改写。
+
+所有持久化 deadline 使用 UTC 的 `startedAtUtc`、`deadlineAtUtc` 和 `nextReminderAtUtc`。进程存活时首页正计时和进度使用单调 elapsed，UI 刷新不是计时来源；工作阶段显示已工作时长，休息阶段显示已休息时长，等待休息阶段继续显示累计已工作时长。应用启动或恢复时必须依据当前 UTC 做 reconciliation。屏幕状态为 `unknown` 时只能发布能力降级，绝不能当作 `off`，也不能关闭亮屏统计区间或改变计时状态。
+
+## 7. 持久化与统计口径
+
+当前核心表为：
+
+- `app_settings_table`：单行用户设置、语言、主题、三类通知开关、锁屏暂停、固定竖屏、震动开关和超时行为。
+- `timer_snapshots_table`：单行当前计时快照、revision、cycle、phase、时间点和当前轮配置。
+- `pending_commands_table`：通知等外部动作的 inbox，按 `commandId` 去重，恢复后可重放。
+- `activity_events_table`：追加式工作/休息/提醒/跳过/超时/屏幕区间事件。
+- `screen_activity_state_table`：单行开放亮屏区间，避免进程重启时丢失未关闭时长。
+
+时间点用 UTC 存储，持续时间用整数毫秒；事件同时记录 `localDateKey` 和 UTC offset。跨本地午夜的亮屏或休息区间必须拆分到对应日期。完整休息统计只读取 `restCompleted` 事件；跳过、超时和停止不增加完整休息次数。统计查询需要防止负数、重复累计和开放区间重复结算。
+
+`DailyStatistics.timelineSegments` 由 data repository 将 `workCompleted`、`restCompleted` 事件还原为不可变 UTC 时段并按开始时间排序；presentation 只消费该领域模型，不直接读取 Drift row。工作达到设定时长后的超时段会在该阶段结束时追加为 `workCompleted` 事件；时间轴只绘制已记录的工作和完整休息，开放、跳过、超时或未完成阶段不得伪装成完成休息。
+
+## 8. 平台适配与通知
+
+平台插件和原生类型只能出现在 `lib/platform/`、对应 feature 的实现层或原生 host 目录。application 只依赖这些纯 Dart 契约：
+
+- `NotificationGateway`：初始化、权限、调度、取消、活动/待处理通知查询和动作流。
+- `ScreenStateGateway`：当前状态和变化流，状态为 `on`、`dimmed`、`off` 或 `unknown`。
+- `LifecycleGateway`：前台、后台、恢复和退出事件。
+- `WindowBehaviorGateway`：同步 Windows/macOS 关闭时保留到托盘/菜单栏的偏好、菜单本地化文案、动态计时菜单项，并接收原生菜单动作。
+- `PlatformCapabilities`：声明通知、通知动作、屏幕状态、Android 震动、托盘和窗口能力。
+
+三端屏幕状态使用统一通道：`dev.resteye/screen_state` 与 `dev.resteye/screen_state/events`。在计时语义中，`off` 表示设备已锁定、不可交互，不表示显示器单独熄灭。Android 使用 `KeyguardManager.isKeyguardLocked` 读取锁屏状态，并监听 `ACTION_SCREEN_ON`、`ACTION_SCREEN_OFF` 和 `ACTION_USER_PRESENT`；`ACTION_USER_PRESENT` 表示用户完成解锁，不能只用 `PowerManager.isInteractive` 推断锁屏。Windows 使用 `WTSRegisterSessionNotification` 与 `WM_WTSSESSION_CHANGE` 的 `WTS_SESSION_LOCK`/`WTS_SESSION_UNLOCK`，并以 `Winlogon` 输入桌面轮询作为兜底；WTS 锁屏/解锁事件是权威信号，锁屏期间轮询不得将过渡中的输入桌面误判为解锁；macOS 使用 `DistributedNotificationCenter` 的 `com.apple.screenIsLocked`/`com.apple.screenIsUnlocked`，并用 `CGSessionCopyCurrentDictionary` 读取启动和监听建立时状态。显示器单独休眠不会触发锁屏暂停。原生实现必须清理 receiver、observer、event sink 和 method handler。
+
+通知必须由已提交快照和设置推导为期望集合，并由 reconciler 幂等同步。`restReminderEnabled` 控制工作结束后发出的休息提醒，`missedRestReminderEnabled` 控制 `awaitingRest` 阶段按当前轮 `reminderInterval` 发送的重复提醒，`workReminderEnabled` 控制休息完成后发出的工作提醒；关闭任一开关都必须取消对应的待发通知，未休息重复提醒不另设间隔。通知 ID 使用 `cycleId + effectType + occurrence` 的确定性哈希；Android 通知包含“开始休息”和“跳过”动作，并根据设置选择震动/静默 channel。Android 声明 `SCHEDULE_EXACT_ALARM`；有精确闹钟权限时使用 `exactAllowWhileIdle`，否则安全降级为 `inexactAllowWhileIdle`，不能因精确权限缺失而阻断提醒。Windows 使用系统通知能力并明确请求系统默认提示音。Windows Toast XML 固定按 `visual → audio → actions` 顺序生成，避免系统显示通知但忽略声音；macOS 使用各自系统通知能力。Windows runner 使用 `Shell_NotifyIconW` 注册原生托盘图标，macOS 使用 `NSStatusItem` 注册菜单栏图标；两端均提供本地化“打开”和“退出”，且不在这两个菜单标题中重复应用名称。关闭行为开启时窗口只隐藏，打开恢复窗口，退出允许真正结束进程。Dart 通过 `dev.resteye/window_behavior` 的 `setTrayMenu` 一次性提交 tooltip、打开/退出文案和当前计时菜单项；原生端只显示列表，并通过 `dev.resteye/window_behavior/events` 回传稳定 action id。回传动作必须重新进入 `TimerController`/`TimerCommandDispatcher`，不能在 Swift/C++ 中直接修改计时状态。通知声音最终仍受操作系统的应用通知声音、系统音量和专注助手策略控制。通知、权限或屏幕状态不可用时进入明确的 degraded 状态，不能阻断计时或静默修改用户数据。
+
+通知实现补充：通知 ID 使用 `cycleId + effectType + absolute scheduledAtUtc` 的确定性哈希，使连续对账只处理新增或到期项目；震动/语言设置变化会强制重写现有计划。通知 gateway 接收 reconciler 已加载的设置，批次内复用本地化文案和 Android 调度模式，避免每条通知重复查询。
+
+## 9. 本地化、主题与跨平台 UI
+
+设置页的卡片顺序固定为“外观 → 通知 → 计时 → 关于”：不显示分类标题或分类图标，设置项不使用装饰性左侧图标，所有卡片保持统一的内容起始线和控件对齐；工作提醒、休息提醒、未休息重复提醒和其联动的未休息提醒间隔位于通知卡片，三类开关在 Android、Windows、macOS 均显示；锁屏暂停位于计时卡片且默认关闭，关于只作为最后的二级入口；未休息超时时间与超时后处理也属于计时卡片。Android 外观设置提供默认开启的固定竖屏开关，Windows 外观设置提供默认开启的“关闭时最小化到托盘”开关。统计页默认选择今天，并通过 Material 单日期选择器切换日期；摘要与时间轴拆为两张卡片：摘要使用工作、休息和完成休息三个 Material 语义图标，不使用左侧竖杠；单日时间轴卡片只保留图例和可视化，不添加标题。不将亮屏时长作为独立用户指标。工作使用蓝色、休息使用高对比度暖橙色，浅色和深色主题都必须可区分。使用 Material 组件组合（如 `Row`、`Stack`、`Card`），不得使用 `CustomPainter` 或手动画布。
+
+所有用户可见文字、错误、无障碍语义、通知标题/正文、通知动作和原生显示名称都必须本地化。ARB 源文件位于 `lib/l10n/arb/`，`app_zh.arb` 提供中文，`app_en.arb` 提供英文回退；生成文件位于 `lib/l10n/generated/`，禁止手动编辑。语言偏好使用稳定枚举 `system`、`zh`、`en`，默认 `system`；跟随系统时 UI 保持 `MaterialApp.locale == null` 以响应系统语言变化，通知在调度时把当前系统 locale 解析为受支持语言。domain/database 只保存 locale code、枚举和数值，不保存翻译后的句子；切换语言后应重排尚未触发的通知。
+
+三端统一使用 Material 3。主题偏好使用稳定枚举 `system`、`light`、`dark`，默认 `system`，分别映射到 Flutter 的 `ThemeMode`。品牌种子色为 `#6B9FE8`，主题 token、间距和圆角集中在 `app/theme/`。一级导航固定为“今日 → 统计 → 设置”，关于页从设置进入二级页面；首页不显示左上角品牌图标和应用名称。首页工作/休息摘要是至少 44×44 的可操作入口，打开快捷时长弹窗；修改值写入下一轮设置，活动轮仍展示并使用其配置快照。compact `< 600` 使用 `NavigationBar`，更宽布局优先 `NavigationRail`。必须支持深浅色、文本缩放、键盘焦点、鼠标悬停、语义标签和至少 44×44 的交互目标。
+
+## 10. 错误、生命周期与隐私
+
+边界层捕获具体异常并转换为 `AppFailure` 或 capability 状态；UI 只展示可本地化的 failure code，不展示堆栈或插件原始错误。启动遇到非法计时快照或数据库错误时显示不依赖数据库的失败页，保留原始数据库，禁止静默清空。配置类未知枚举按默认值安全回退，不把它们当作启动失败条件。
+
+计时、通知、屏幕事件和统计事件的订阅必须串行化，所有 subscription、Timer、StreamController、native observer 和 database 在 runtime dispose 时释放。应用启动恢复完成后必须通过 `TimerCommandDispatcher` 结束上次进程遗留的活动计时；runtime 释放前以及生命周期 `detached` 事件到达时也必须结束当前活动计时并持久化停止事件。最小化到托盘、后台、隐藏和锁屏不属于真正退出，不得因此结束计时。恢复流程可重复执行，不得重复计时转换、事件或通知。日志通过 `AppLogger`，不得记录完整通知 payload、用户路径、统计明细或其他可识别信息。
+
+## 11. 必须遵守的硬性规则
+
+1. 修改前先阅读 `AGENTS.md`、`docs/requirements.md`、本文档和相关 feature 的现有代码。
+2. 所有计时状态变更必须经过 `TimerCommandDispatcher`；不得在 widget、通知 gateway 或 native callback 中直接改快照。
+3. Domain 保持纯 Dart；禁止将 Flutter、Riverpod、Drift、MethodChannel 或插件类型带入 domain。
+4. `ScreenState.unknown` 不是 `off`；未知能力只能降级，不能改变统计或计时状态。Android 的 `off` 状态表示 Keyguard 锁屏，不得用 `PowerManager.isInteractive` 单独替代；配置类未知枚举允许在边界安全回退到默认值；非法计时快照仍必须进入失败页。
+5. 设置只影响下一轮；计时快照必须保存当前轮配置和 `timeoutBehavior`。
+6. 持久化时间使用 UTC，枚举使用稳定字符串，数据库结构变化必须配 Drift migration。
+7. 用户可见文本必须进入 ARB；新增文案不能散落在 Dart、Kotlin、Swift 或 C++ 中。
+8. 不手动编辑 `app_database.g.dart`、`l10n/generated/*` 或其他生成文件；修改 schema/ARB 后重新运行生成命令。
+9. 本项目明确不编写、不新增、不运行单元测试、Widget 测试或集成测试，也不设置覆盖率门槛；使用静态分析和构建验证代码，平台运行验收由用户完成。
+10. Windows 主机不执行 macOS 构建；不得用无法在目标主机构建的条件代码假装完成平台支持。
+11. 不执行破坏性数据库清理、重置用户数据或宽范围删除；不确定时先保留数据并报告阻塞。
+12. 影响状态语义、端口、schema、依赖或平台行为时，必须更新本文档；重大取舍新增 `docs/adr/` ADR。
+13. 所有设置写入必须经过 `SettingsController` 自动保存管线；widget 不得直接写 repository，非法 draft 不得覆盖最近一次有效设置，活动计时配置快照不得随设置修改。
+
+## 12. 生成、构建与验收
+
+在包含 `pubspec.yaml` 的 `rest_eye/` 目录执行：
+
+```bash
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+flutter gen-l10n
+dart format --output=none --set-exit-if-changed lib
+flutter analyze
+flutter build apk --debug       # Windows 主机可执行
+flutter build windows --release # Windows 主机可执行
+# macOS 主机：flutter build macos；Windows 构建可暂缓
+```
+
+涉及计时、通知、设置、屏幕状态、统计、生命周期或 UI 的变更，必须执行适用的静态分析和平台构建；平台运行冒烟由用户完成。Android 使用 Pixel 9/ADB 验证时，应核对 UI 树、系统电源状态、通知状态和崩溃缓冲区；Windows 至少验证启动、窗口响应和关闭；macOS 只能在 macOS 主机完成构建和运行验证。
+
+## 13. 演进方式
+
+新功能优先放入对应 feature；只有两个以上 feature 稳定复用的非业务能力才能进入 `core/`。新增平台能力先定义 application port，再实现 Android、Windows、macOS adapter；不要让平台差异污染 domain。改变依赖方向、持久化格式、状态机语义或共享通道时，先更新本文档并记录 ADR，再编码。桌面托盘/菜单栏协议必须保持 action id、文案字段和事件通道在 Windows/macOS 一致，新增计时动作先扩展共享 port 与 Dart 映射，再改原生菜单。保持 `main.dart` 极小、文件职责单一、命名清晰，并在交付前说明变更文件、验证命令、未验证平台和已知限制。

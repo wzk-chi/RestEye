@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">眸息</string>
+    <string name="notification_channel_name">护眼提醒</string>
+    <string name="notification_channel_description">工作结束、休息提醒与休息完成通知</string>
+</resources>
