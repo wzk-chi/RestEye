@@ -79,6 +79,28 @@ final class TimerCommandDispatcher {
     await _notificationReconciler?.reconcile(_current);
   }
 
+  Future<TimerSnapshot> refreshFromRepository() {
+    final operation = _tail.then((_) async {
+      final durable = await _repository.loadSnapshot();
+      if (durable.revision != _current.revision ||
+          durable.cycleId != _current.cycleId) {
+        _publish(durable);
+      }
+      return durable;
+    });
+    _tail = operation.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stackTrace) {
+        _logger.error(
+          'Timer snapshot refresh failed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      },
+    );
+    return operation;
+  }
+
   Future<void> stopIfActive({required String source}) async {
     if (!_current.isActive) return;
     await dispatch(

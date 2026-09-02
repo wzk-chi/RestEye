@@ -185,6 +185,7 @@ final class TimerRuntime {
   }
 
   Future<void> _reconcileNow() async {
+    final snapshot = await _dispatcher.refreshFromRepository();
     final settings = await _settingsRepository.load();
     await _dispatcher.dispatch(
       ReachDeadlineCommand(
@@ -192,7 +193,7 @@ final class TimerRuntime {
         occurredAtUtc: _clock.utcNow,
         nextCycleId: _dispatcher.createId('cycle'),
         nextCycleConfig: timerCycleConfigFromSettings(settings),
-        expectedCycleId: _snapshot.cycleId,
+        expectedCycleId: snapshot.cycleId,
       ),
     );
   }

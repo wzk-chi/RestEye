@@ -103,7 +103,12 @@ final class NotificationScheduleReconciler {
       }
       for (final notification in duePrevious) {
         if (generation != _generation) return;
-        if (pendingIds.contains(notification.id)) {
+        // Leave a pending alarm alone. Cancelling and immediately replacing it
+        // here races Android's ScheduledNotificationReceiver at the deadline.
+        // Only recover when neither the alarm nor an already-posted notice is
+        // present anymore.
+        if (!pendingIds.contains(notification.id) &&
+            !activeIds.contains(notification.id)) {
           await _gateway.schedule(notification, settings: settings);
         }
       }

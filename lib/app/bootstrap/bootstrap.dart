@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rest_eye/app/bootstrap/app_runtime.dart';
 import 'package:rest_eye/app/bootstrap/app_runtime_owner.dart';
 import 'package:rest_eye/app/bootstrap/app_settings_change_effects.dart';
+import 'package:rest_eye/app/bootstrap/background_notification_action.dart';
 import 'package:rest_eye/app/bootstrap/bootstrap_failure_app.dart';
 import 'package:rest_eye/app/rest_eye_app.dart';
 import 'package:rest_eye/core/clock/app_clock_provider.dart';
@@ -51,6 +52,8 @@ Future<void> bootstrap() async {
     final notificationGateway = LocalNotificationGateway(
       settingsRepository,
       clock,
+      onDidReceiveBackgroundNotificationResponse:
+          handleBackgroundNotificationAction,
     );
     final notificationReconciler = NotificationScheduleReconciler(
       notificationGateway,

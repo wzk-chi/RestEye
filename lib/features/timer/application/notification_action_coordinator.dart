@@ -29,20 +29,20 @@ final class NotificationActionCoordinator {
     start();
     final launchAction = await _gateway.takeLaunchAction();
     if (launchAction == null) return;
-    await _enqueueAndDispatch(launchAction);
+    await handleAction(launchAction);
   }
 
   void start() {
     if (_subscription != null) return;
     _subscription = _gateway.actions.listen(
-      (action) => unawaited(_enqueueAndDispatch(action)),
+      (action) => unawaited(handleAction(action)),
       onError: (Object error, StackTrace stackTrace) {
         _logger.warning('Notification action stream failed', error: error);
       },
     );
   }
 
-  Future<void> _enqueueAndDispatch(NotificationActionRequest action) async {
+  Future<void> handleAction(NotificationActionRequest action) async {
     final operation = _tail.then((_) => _dispatch(action));
     _tail = operation.then<void>((_) {}, onError: (_, _) {});
     await operation;

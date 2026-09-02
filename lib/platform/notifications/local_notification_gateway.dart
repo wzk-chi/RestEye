@@ -15,7 +15,11 @@ import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 final class LocalNotificationGateway implements NotificationGateway {
-  LocalNotificationGateway(this._settingsRepository, this._clock);
+  LocalNotificationGateway(
+    this._settingsRepository,
+    this._clock, {
+    this.onDidReceiveBackgroundNotificationResponse,
+  });
 
   static const _startRestAction = 'startRest';
   static const _skipRestAction = 'skipRest';
@@ -24,6 +28,8 @@ final class LocalNotificationGateway implements NotificationGateway {
 
   final SettingsRepository _settingsRepository;
   final AppClock _clock;
+  final DidReceiveBackgroundNotificationResponseCallback?
+  onDidReceiveBackgroundNotificationResponse;
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   final _actions = StreamController<NotificationActionRequest>.broadcast();
@@ -81,6 +87,8 @@ final class LocalNotificationGateway implements NotificationGateway {
     await _plugin.initialize(
       settings: initializationSettings,
       onDidReceiveNotificationResponse: _handleResponse,
+      onDidReceiveBackgroundNotificationResponse:
+          onDidReceiveBackgroundNotificationResponse,
     );
     final launchDetails = await _plugin.getNotificationAppLaunchDetails();
     final response = launchDetails?.notificationResponse;
@@ -199,12 +207,12 @@ final class LocalNotificationGateway implements NotificationGateway {
             AndroidNotificationAction(
               _startRestAction,
               strings.notificationActionStartRest,
-              showsUserInterface: true,
+              showsUserInterface: false,
             ),
             AndroidNotificationAction(
               _skipRestAction,
               strings.notificationActionSkipRest,
-              showsUserInterface: true,
+              showsUserInterface: false,
             ),
           ]
         : const <AndroidNotificationAction>[];
@@ -230,6 +238,13 @@ final class LocalNotificationGateway implements NotificationGateway {
         priority: Priority.high,
         enableVibration: notification.vibrationEnabled,
         playSound: true,
+        // Keep timer reminders in the notification shade until the user
+        // dismisses them or the timer state makes them obsolete. Android's
+        // heads-up banner may still fade out, but the notification itself
+        // must not expire just because it was delivered by an alarm receiver.
+        autoCancel: false,
+        ongoing: false,
+        timeoutAfter: null,
         actions: androidActions,
       ),
       iOS: DarwinNotificationDetails(
@@ -420,39 +435,7 @@ final class LocalNotificationGateway implements NotificationGateway {
   }
 
   NotificationActionRequest? _parseResponse(NotificationResponse response) {
-    final actionId = response.actionId;
-    final raw = actionId?.startsWith('{') == true ? actionId : response.payload;
-    if (raw == null || raw.isEmpty) return null;
-    try {
-      final json = jsonDecode(raw) as Map<String, Object?>;
-      final typeCode = actionId?.startsWith('{') == true
-          ? json['action'] as String?
-          : actionId;
-      final type = switch (typeCode) {
-        _startRestAction => NotificationActionType.startRest,
-        _skipRestAction => NotificationActionType.skipRest,
-        _ => null,
-      };
-      if (type == null) return null;
-      final now = _clock.utcNow;
-      return NotificationActionRequest(
-        commandId:
-            'notification-${json['cycleId']}-$typeCode-${now.microsecondsSinceEpoch}',
-        type: type,
-        cycleId: json['cycleId']! as String,
-        expectedPhase: TimerPhase.values.byName(
-          json['expectedPhase']! as String,
-        ),
-        expectedRevision: json['expectedRevision']! as int,
-        occurredAtUtc: now,
-      );
-    } on FormatException {
-      return null;
-    } on ArgumentError {
-      return null;
-    } on TypeError {
-      return null;
-    }
+    return parseLocalNotificationActionResponse(response, _clock);
   }
 
   String _windowsActionPayload(
@@ -490,5 +473,44 @@ final class LocalNotificationGateway implements NotificationGateway {
     _disposed = true;
     _launchAction = null;
     await _actions.close();
+  }
+}
+
+NotificationActionRequest? parseLocalNotificationActionResponse(
+  NotificationResponse response,
+  AppClock clock,
+) {
+  final actionId = response.actionId;
+  final raw = actionId?.startsWith('{') == true ? actionId : response.payload;
+  if (raw == null || raw.isEmpty) return null;
+  try {
+    final json = jsonDecode(raw) as Map<String, Object?>;
+    final typeCode = actionId?.startsWith('{') == true
+        ? json['action'] as String?
+        : actionId;
+    final type = switch (typeCode) {
+      LocalNotificationGateway._startRestAction =>
+        NotificationActionType.startRest,
+      LocalNotificationGateway._skipRestAction =>
+        NotificationActionType.skipRest,
+      _ => null,
+    };
+    if (type == null) return null;
+    final now = clock.utcNow;
+    return NotificationActionRequest(
+      commandId:
+          'notification-${json['cycleId']}-$typeCode-${now.microsecondsSinceEpoch}',
+      type: type,
+      cycleId: json['cycleId']! as String,
+      expectedPhase: TimerPhase.values.byName(json['expectedPhase']! as String),
+      expectedRevision: json['expectedRevision']! as int,
+      occurredAtUtc: now,
+    );
+  } on FormatException {
+    return null;
+  } on ArgumentError {
+    return null;
+  } on TypeError {
+    return null;
   }
 }
