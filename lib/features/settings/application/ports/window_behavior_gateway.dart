@@ -1,5 +1,6 @@
 enum WindowTrayMenuAction {
   startWork,
+  startWorkAfterRest,
   resumeWork,
   startRest,
   skipRest,

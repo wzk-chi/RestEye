@@ -35,6 +35,9 @@ final class DriftSettingsRepository implements SettingsRepository {
         fixedPortraitEnabled: row.fixedPortraitEnabled,
         minimizeToTrayOnClose: row.minimizeToTrayOnClose,
         timeoutBehavior: _timeoutBehavior(row.timeoutBehavior),
+        restCompletionBehavior: _restCompletionBehavior(
+          row.restCompletionBehavior,
+        ),
       );
       final validationCode = settings.validate();
       if (validationCode != null) throw ValidationFailure(validationCode);
@@ -73,6 +76,9 @@ final class DriftSettingsRepository implements SettingsRepository {
               fixedPortraitEnabled: Value(settings.fixedPortraitEnabled),
               minimizeToTrayOnClose: Value(settings.minimizeToTrayOnClose),
               timeoutBehavior: Value(settings.timeoutBehavior.name),
+              restCompletionBehavior: Value(
+                settings.restCompletionBehavior.name,
+              ),
             ),
           );
     } catch (error) {
@@ -84,6 +90,14 @@ final class DriftSettingsRepository implements SettingsRepository {
   TimeoutBehavior _timeoutBehavior(String value) => switch (value) {
     'stopTimer' => TimeoutBehavior.stopTimer,
     _ => TimeoutBehavior.nextCycle,
+  };
+
+  RestCompletionBehavior _restCompletionBehavior(String value) => switch (
+    value
+  ) {
+    'stopTimer' => RestCompletionBehavior.stopTimer,
+    'continueRest' => RestCompletionBehavior.continueRest,
+    _ => RestCompletionBehavior.startWork,
   };
 
   AppLocalePreference _localePreference(String value) => switch (value) {

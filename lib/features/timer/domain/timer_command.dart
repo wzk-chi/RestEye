@@ -77,6 +77,21 @@ final class SkipRestCommand extends TimerCommand {
   final TimerCycleConfig nextCycleConfig;
 }
 
+final class CompleteRestCommand extends TimerCommand {
+  const CompleteRestCommand({
+    required super.commandId,
+    required super.occurredAtUtc,
+    required this.nextCycleId,
+    required this.nextCycleConfig,
+    super.expectedCycleId,
+    super.expectedPhase,
+    super.expectedRevision,
+  });
+
+  final String nextCycleId;
+  final TimerCycleConfig nextCycleConfig;
+}
+
 final class StopTimerCommand extends TimerCommand {
   const StopTimerCommand({
     required super.commandId,

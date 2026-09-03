@@ -338,6 +338,30 @@ abstract class AppLocalizations {
   /// **'休息时长'**
   String get settingsRestDuration;
 
+  /// No description provided for @settingsRestCompletionBehavior.
+  ///
+  /// In zh, this message translates to:
+  /// **'休息结束后'**
+  String get settingsRestCompletionBehavior;
+
+  /// No description provided for @settingsRestCompletionStartWork.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动开始工作'**
+  String get settingsRestCompletionStartWork;
+
+  /// No description provided for @settingsRestCompletionStopTimer.
+  ///
+  /// In zh, this message translates to:
+  /// **'结束计时'**
+  String get settingsRestCompletionStopTimer;
+
+  /// No description provided for @settingsRestCompletionContinueRest.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续休息'**
+  String get settingsRestCompletionContinueRest;
+
   /// No description provided for @settingsWorkReminder.
   ///
   /// In zh, this message translates to:
@@ -725,7 +749,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationRestCompleteBody.
   ///
   /// In zh, this message translates to:
-  /// **'做得很好，下一轮工作已经开始。'**
+  /// **'休息时间已到。'**
   String get notificationRestCompleteBody;
 
   /// No description provided for @notificationActionStartRest.

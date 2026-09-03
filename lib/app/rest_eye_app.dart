@@ -140,6 +140,8 @@ class _TrayMenuLocalizerState extends ConsumerState<_TrayMenuLocalizer> {
     switch (action) {
       case WindowTrayMenuAction.startWork:
         await controller.startWork();
+      case WindowTrayMenuAction.startWorkAfterRest:
+        await controller.startWorkAfterRest();
       case WindowTrayMenuAction.resumeWork:
         await controller.resumeWork();
       case WindowTrayMenuAction.startRest:
@@ -200,8 +202,8 @@ class _TrayMenuLocalizerState extends ConsumerState<_TrayMenuLocalizer> {
       ],
       TimerPhase.resting => [
         WindowTrayMenuItem(
-          action: WindowTrayMenuAction.skipRest,
-          label: strings.actionEndRest,
+          action: WindowTrayMenuAction.startWorkAfterRest,
+          label: strings.actionStartWork,
         ),
         WindowTrayMenuItem(
           action: WindowTrayMenuAction.stopTimer,

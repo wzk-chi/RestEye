@@ -6,6 +6,7 @@ import 'package:rest_eye/features/settings/domain/settings_repository.dart';
 import 'package:rest_eye/features/timer/application/ports/notification_gateway.dart';
 import 'package:rest_eye/features/timer/application/ports/platform_capabilities.dart';
 import 'package:rest_eye/features/timer/domain/timer_phase.dart';
+import 'package:rest_eye/features/timer/domain/timer_policy.dart';
 import 'package:rest_eye/features/timer/domain/timer_snapshot.dart';
 
 final class NotificationPlan {
@@ -229,7 +230,10 @@ final class NotificationScheduleReconciler {
         }
       case TimerPhase.resting:
         final deadline = snapshot.deadlineAtUtc;
-        if (workReminderEnabled && deadline != null) {
+        if (snapshot.cycleConfig.restCompletionBehavior !=
+                RestCompletionBehavior.continueRest &&
+            workReminderEnabled &&
+            deadline != null) {
           if (capacity > 0) {
             result.add(
               ScheduledNotification(

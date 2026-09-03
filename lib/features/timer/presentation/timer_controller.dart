@@ -212,6 +212,25 @@ final class TimerController extends Notifier<TimerViewState> {
     });
   }
 
+  Future<void> startWorkAfterRest() async {
+    await _run(() async {
+      final settings = await ref.read(settingsRepositoryProvider).load();
+      final dispatcher = ref.read(timerCommandDispatcherProvider);
+      final snapshot = dispatcher.current;
+      return dispatcher.dispatch(
+        CompleteRestCommand(
+          commandId: dispatcher.createId('complete-rest'),
+          occurredAtUtc: ref.read(appClockProvider).utcNow,
+          expectedCycleId: snapshot.cycleId,
+          expectedPhase: TimerPhase.resting,
+          expectedRevision: snapshot.revision,
+          nextCycleId: dispatcher.createId('cycle'),
+          nextCycleConfig: timerCycleConfigFromSettings(settings),
+        ),
+      );
+    });
+  }
+
   Future<void> stop() async {
     await _run(() {
       final dispatcher = ref.read(timerCommandDispatcherProvider);

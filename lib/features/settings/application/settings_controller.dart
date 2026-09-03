@@ -90,6 +90,10 @@ final class SettingsController extends AsyncNotifier<SettingsViewState> {
     _update((settings) => settings.copyWith(timeoutBehavior: value));
   }
 
+  void setRestCompletionBehavior(RestCompletionBehavior value) {
+    _update((settings) => settings.copyWith(restCompletionBehavior: value));
+  }
+
   void setAndroidVibrationEnabled(bool value) {
     _update((settings) => settings.copyWith(androidVibrationEnabled: value));
   }

@@ -29,6 +29,9 @@ class TimerSnapshotsTable extends Table {
   TextColumn get timeoutBehavior =>
       text().withDefault(const Constant('nextCycle'))();
 
+  TextColumn get restCompletionBehavior =>
+      text().withDefault(const Constant('startWork'))();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }

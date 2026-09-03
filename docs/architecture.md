@@ -95,7 +95,7 @@ UI 按钮、通知动作、锁屏暂停和恢复流程都必须复用同一命�
 
 ### 5.5 Data 与 Infrastructure
 
-feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model 与 Drift row 之间转换；`infrastructure/database/` 只负责数据库、表和迁移。当前 schema version 为 10，`screen_activity_state` 保存尚未关闭的亮屏区间，`app_settings_table.pause_when_locked` 保存锁屏暂停偏好，`fixed_portrait_enabled` 保存 Android 固定竖屏偏好，`minimize_to_tray_on_close` 保存 Windows 关闭行为偏好，`work_reminder_enabled`、`rest_reminder_enabled` 和 `missed_rest_reminder_enabled` 保存三类通知开关，默认均为 `true`。`activity_events_table.local_date_key`、`occurred_at_utc` 和 pending command 的终态/时间列有索引，以支持统计查询和恢复扫描。v6 将旧列名平滑迁移为新语义，v7 为既有设置补充托盘偏好，v8 移除已废弃的自动模式字段，v9 为既有设置补充三类通知开关，v10 增加查询索引，不清除其他已有设置。计时快照、关键事件和 inbox command 的状态变更必须使用事务；恢复事件通过 Drift batch 写入，终态 inbox command 保留 30 天后清理，未处理命令恢复扫描最多读取 10,000 条；持久化失败不得发布未提交的内存状态。数据库升级必须增加显式 migration，禁止删除用户数据或通过重建数据库“修复”坏数据。
+feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model 与 Drift row 之间转换；`infrastructure/database/` 只负责数据库、表和迁移。当前 schema version 为 11，`screen_activity_state` 保存尚未关闭的亮屏区间，`app_settings_table.pause_when_locked` 保存锁屏暂停偏好，`fixed_portrait_enabled` 保存 Android 固定竖屏偏好，`minimize_to_tray_on_close` 保存 Windows 关闭行为偏好，`work_reminder_enabled`、`rest_reminder_enabled` 和 `missed_rest_reminder_enabled` 保存三类通知开关（默认均为 `true`），`rest_completion_behavior` 保存休息自然结束后的处理方式。`activity_events_table.local_date_key`、`occurred_at_utc` 和 pending command 的终态/时间列有索引，以支持统计查询和恢复扫描。v6 将旧列名平滑迁移为新语义，v7 为既有设置补充托盘偏好，v8 移除已废弃的自动模式字段，v9 为既有设置补充三类通知开关，v10 增加查询索引，v11 增加休息完成处理设置，不清除其他已有设置。计时快照、关键事件和 inbox command 的状态变更必须使用事务；恢复事件通过 Drift batch 写入，终态 inbox command 保留 30 天后清理，未处理命令恢复扫描最多读取 10,000 条；持久化失败不得发布未提交的内存状态。数据库升级必须增加显式 migration，禁止删除用户数据或通过重建数据库“修复”坏数据。
 
 ### 5.6 Presentation
 
@@ -114,7 +114,7 @@ feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model
 
 `executionStatus` 与 phase 正交，当前为 `active`/`suspended`。开启 `pauseWhenLocked` 后，只有 `working` 会因锁屏变为 `suspended`；解锁/恢复后继续同一 `cycleId`，不重新创建轮次；`awaitingRest` 和 `resting` 不因锁屏改变。若未来需要区分手动暂停、系统挂起等原因，应增加 suspension reason，不复制 phase。
 
-工作达到设定时长后进入 `awaitingRest` 并发出工作完成通知：主进度固定为 100%，显示的“已工作”时长继续累加，等待期间视为超时工作。开始休息、跳过休息、停止计时或等待超时结束该阶段时，必须将超时工作追加为 `workCompleted` 事件，因而计入工作统计；完整休息完成后进入下一轮工作。用户跳过休息或等待超时均不计为完整休息。超时行为由当前轮配置快照决定：`nextCycle` 为默认值，进入下一轮；`stopTimer` 回到 `idle`。设置保存只影响下一轮，当前轮不得被悄悄改写。
+工作达到设定时长后进入 `awaitingRest` 并发出工作完成通知：主进度固定为 100%，显示的“已工作”时长继续累加，等待期间视为超时工作。开始休息、跳过休息、停止计时或等待超时结束该阶段时，必须将超时工作追加为 `workCompleted` 事件，因而计入工作统计；完整休息完成后按当前轮 `restCompletionBehavior` 处理：`startWork` 进入下一轮工作，`stopTimer` 回到 `idle`，`continueRest` 保持 `resting` 并继续累计休息时长。休息中的“开始工作”操作结束当前休息并进入下一轮工作；达到配置休息时长后才计为完整休息。用户跳过休息或等待超时均不计为完整休息。超时行为由当前轮配置快照决定：`nextCycle` 为默认值，进入下一轮；`stopTimer` 回到 `idle`。设置保存只影响下一轮，当前轮不得被悄悄改写。
 
 所有持久化 deadline 使用 UTC 的 `startedAtUtc`、`deadlineAtUtc` 和 `nextReminderAtUtc`。进程存活时首页正计时和进度使用单调 elapsed，UI 刷新不是计时来源；工作阶段显示已工作时长，休息阶段显示已休息时长，等待休息阶段继续显示累计已工作时长。应用启动或恢复时必须依据当前 UTC 做 reconciliation。屏幕状态为 `unknown` 时只能发布能力降级，绝不能当作 `off`，也不能关闭亮屏统计区间或改变计时状态。
 
@@ -122,7 +122,7 @@ feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model
 
 当前核心表为：
 
-- `app_settings_table`：单行用户设置、语言、主题、三类通知开关、锁屏暂停、固定竖屏、震动开关和超时行为。
+- `app_settings_table`：单行用户设置、语言、主题、三类通知开关、锁屏暂停、固定竖屏、震动开关、超时行为和休息完成处理。
 - `timer_snapshots_table`：单行当前计时快照、revision、cycle、phase、时间点和当前轮配置。
 - `pending_commands_table`：通知等外部动作的 inbox，按 `commandId` 去重，恢复后可重放。
 - `activity_events_table`：追加式工作/休息/提醒/跳过/超时/屏幕区间事件。

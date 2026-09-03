@@ -8,6 +8,7 @@ import 'package:rest_eye/features/timer/application/timer_command_dispatcher.dar
 import 'package:rest_eye/features/timer/application/timer_cycle_config_factory.dart';
 import 'package:rest_eye/features/timer/domain/timer_command.dart';
 import 'package:rest_eye/features/timer/domain/timer_phase.dart';
+import 'package:rest_eye/features/timer/domain/timer_policy.dart';
 import 'package:rest_eye/features/timer/domain/timer_snapshot.dart';
 
 final class TimerRuntimeTick {
@@ -207,6 +208,13 @@ final class TimerRuntime {
         : calculated.isNegative
         ? Duration.zero
         : calculated;
+    final displayDuration =
+        _snapshot.phase == TimerPhase.resting &&
+            _snapshot.deadlineAtUtc == null &&
+            _snapshot.cycleConfig.restCompletionBehavior ==
+                RestCompletionBehavior.continueRest
+        ? _nonNegativeDuration(_clock.utcNow.difference(_snapshot.startedAtUtc))
+        : _snapshot.displayDurationForRemaining(remaining);
     if (_debugLogging &&
         _snapshot.executionStatus == ExecutionStatus.suspended) {
       _logger.info(
@@ -219,7 +227,7 @@ final class TimerRuntime {
       TimerRuntimeTick(
         snapshot: _snapshot,
         remaining: remaining,
-        displayDuration: _snapshot.displayDurationForRemaining(remaining),
+        displayDuration: displayDuration,
         progress: _snapshot.progressForRemaining(remaining),
       ),
     );
@@ -229,6 +237,10 @@ final class TimerRuntime {
     if (first == null) return second;
     if (second == null) return first;
     return first.isBefore(second) ? first : second;
+  }
+
+  Duration _nonNegativeDuration(Duration value) {
+    return value.isNegative ? Duration.zero : value;
   }
 
   Future<void> dispose() async {

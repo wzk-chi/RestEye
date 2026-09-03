@@ -138,6 +138,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsRestDuration => '休息时长';
 
   @override
+  String get settingsRestCompletionBehavior => '休息结束后';
+
+  @override
+  String get settingsRestCompletionStartWork => '自动开始工作';
+
+  @override
+  String get settingsRestCompletionStopTimer => '结束计时';
+
+  @override
+  String get settingsRestCompletionContinueRest => '继续休息';
+
+  @override
   String get settingsWorkReminder => '工作提醒';
 
   @override
@@ -346,7 +358,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get notificationRestCompleteTitle => '休息完成';
 
   @override
-  String get notificationRestCompleteBody => '做得很好，下一轮工作已经开始。';
+  String get notificationRestCompleteBody => '休息时间已到。';
 
   @override
   String get notificationActionStartRest => '开始休息';

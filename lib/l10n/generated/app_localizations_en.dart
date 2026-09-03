@@ -143,6 +143,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsRestDuration => 'Rest duration';
 
   @override
+  String get settingsRestCompletionBehavior => 'After rest ends';
+
+  @override
+  String get settingsRestCompletionStartWork => 'Start work';
+
+  @override
+  String get settingsRestCompletionStopTimer => 'End timing';
+
+  @override
+  String get settingsRestCompletionContinueRest => 'Continue rest';
+
+  @override
   String get settingsWorkReminder => 'Work reminder';
 
   @override
@@ -367,8 +379,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationRestCompleteTitle => 'Rest complete';
 
   @override
-  String get notificationRestCompleteBody =>
-      'Well done. Your next work cycle has started.';
+  String get notificationRestCompleteBody => 'Your rest time is up.';
 
   @override
   String get notificationActionStartRest => 'Start rest';

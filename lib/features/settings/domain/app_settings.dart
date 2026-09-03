@@ -21,6 +21,7 @@ final class AppSettings {
     this.fixedPortraitEnabled = true,
     this.minimizeToTrayOnClose = true,
     this.timeoutBehavior = TimeoutBehavior.nextCycle,
+    this.restCompletionBehavior = RestCompletionBehavior.startWork,
   });
 
   static const defaults = AppSettings(
@@ -59,6 +60,7 @@ final class AppSettings {
   final bool fixedPortraitEnabled;
   final bool minimizeToTrayOnClose;
   final TimeoutBehavior timeoutBehavior;
+  final RestCompletionBehavior restCompletionBehavior;
 
   ValidationFailureCode? validate() {
     if (workDuration < minWorkDuration || workDuration > maxWorkDuration) {
@@ -96,6 +98,7 @@ final class AppSettings {
     bool? fixedPortraitEnabled,
     bool? minimizeToTrayOnClose,
     TimeoutBehavior? timeoutBehavior,
+    RestCompletionBehavior? restCompletionBehavior,
   }) {
     return AppSettings(
       workDuration: workDuration ?? this.workDuration,
@@ -115,6 +118,8 @@ final class AppSettings {
       minimizeToTrayOnClose:
           minimizeToTrayOnClose ?? this.minimizeToTrayOnClose,
       timeoutBehavior: timeoutBehavior ?? this.timeoutBehavior,
+      restCompletionBehavior:
+          restCompletionBehavior ?? this.restCompletionBehavior,
     );
   }
 
@@ -135,7 +140,8 @@ final class AppSettings {
           pauseWhenLocked == other.pauseWhenLocked &&
           fixedPortraitEnabled == other.fixedPortraitEnabled &&
           minimizeToTrayOnClose == other.minimizeToTrayOnClose &&
-          timeoutBehavior == other.timeoutBehavior;
+          timeoutBehavior == other.timeoutBehavior &&
+          restCompletionBehavior == other.restCompletionBehavior;
 
   @override
   int get hashCode => Object.hash(
@@ -153,5 +159,6 @@ final class AppSettings {
     fixedPortraitEnabled,
     minimizeToTrayOnClose,
     timeoutBehavior,
+    restCompletionBehavior,
   );
 }

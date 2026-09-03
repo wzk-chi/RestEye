@@ -29,7 +29,7 @@ final class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -115,6 +115,16 @@ final class AppDatabase extends _$AppDatabase {
           'pending_commands_status_idx '
           'ON pending_commands_table '
           '(processed_at_utc, stale_at_utc, occurred_at_utc)',
+        );
+      }
+      if (from < 11) {
+        await migrator.addColumn(
+          appSettingsTable,
+          appSettingsTable.restCompletionBehavior,
+        );
+        await migrator.addColumn(
+          timerSnapshotsTable,
+          timerSnapshotsTable.restCompletionBehavior,
         );
       }
     },

@@ -98,6 +98,7 @@ class TimerPage extends ConsumerWidget {
                 onResumeWork: controller.resumeWork,
                 onStartRest: controller.startRest,
                 onSkipRest: controller.skipRest,
+                onStartWorkAfterRest: controller.startWorkAfterRest,
                 onStop: controller.stop,
               ),
               if (pageState.failureCode != null) ...[
@@ -153,6 +154,10 @@ class TimerPage extends ConsumerWidget {
     Duration displayDuration,
   ) {
     if (snapshot.phase == TimerPhase.awaitingRest) {
+      return displayDuration.isNegative ? Duration.zero : displayDuration;
+    }
+    if (snapshot.phase == TimerPhase.resting &&
+        snapshot.deadlineAtUtc == null) {
       return displayDuration.isNegative ? Duration.zero : displayDuration;
     }
     final totalDuration = switch (snapshot.phase) {
@@ -468,6 +473,7 @@ class _TimerActions extends StatelessWidget {
     required this.onResumeWork,
     required this.onStartRest,
     required this.onSkipRest,
+    required this.onStartWorkAfterRest,
     required this.onStop,
   });
 
@@ -478,6 +484,7 @@ class _TimerActions extends StatelessWidget {
   final VoidCallback onResumeWork;
   final VoidCallback onStartRest;
   final VoidCallback onSkipRest;
+  final VoidCallback onStartWorkAfterRest;
   final VoidCallback onStop;
 
   @override
@@ -497,9 +504,9 @@ class _TimerActions extends StatelessWidget {
               onStartRest,
             ),
             TimerPhase.resting => (
-              strings.actionEndRest,
-              Icons.check,
-              onSkipRest,
+              strings.actionStartWork,
+              Icons.play_arrow,
+              onStartWorkAfterRest,
             ),
           };
     final secondary = executionStatus == ExecutionStatus.suspended

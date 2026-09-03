@@ -197,6 +197,18 @@ class $AppSettingsTableTable extends AppSettingsTable
     requiredDuringInsert: false,
     defaultValue: const Constant('nextCycle'),
   );
+  static const VerificationMeta _restCompletionBehaviorMeta =
+      const VerificationMeta('restCompletionBehavior');
+  @override
+  late final GeneratedColumn<String> restCompletionBehavior =
+      GeneratedColumn<String>(
+        'rest_completion_behavior',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('startWork'),
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -214,6 +226,7 @@ class $AppSettingsTableTable extends AppSettingsTable
     fixedPortraitEnabled,
     minimizeToTrayOnClose,
     timeoutBehavior,
+    restCompletionBehavior,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -367,6 +380,15 @@ class $AppSettingsTableTable extends AppSettingsTable
         ),
       );
     }
+    if (data.containsKey('rest_completion_behavior')) {
+      context.handle(
+        _restCompletionBehaviorMeta,
+        restCompletionBehavior.isAcceptableOrUnknown(
+          data['rest_completion_behavior']!,
+          _restCompletionBehaviorMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -436,6 +458,10 @@ class $AppSettingsTableTable extends AppSettingsTable
         DriftSqlType.string,
         data['${effectivePrefix}timeout_behavior'],
       )!,
+      restCompletionBehavior: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rest_completion_behavior'],
+      )!,
     );
   }
 
@@ -461,6 +487,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
   final bool fixedPortraitEnabled;
   final bool minimizeToTrayOnClose;
   final String timeoutBehavior;
+  final String restCompletionBehavior;
   const AppSettingsRow({
     required this.id,
     required this.workDurationMs,
@@ -477,6 +504,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     required this.fixedPortraitEnabled,
     required this.minimizeToTrayOnClose,
     required this.timeoutBehavior,
+    required this.restCompletionBehavior,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -498,6 +526,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     map['fixed_portrait_enabled'] = Variable<bool>(fixedPortraitEnabled);
     map['minimize_to_tray_on_close'] = Variable<bool>(minimizeToTrayOnClose);
     map['timeout_behavior'] = Variable<String>(timeoutBehavior);
+    map['rest_completion_behavior'] = Variable<String>(restCompletionBehavior);
     return map;
   }
 
@@ -518,6 +547,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       fixedPortraitEnabled: Value(fixedPortraitEnabled),
       minimizeToTrayOnClose: Value(minimizeToTrayOnClose),
       timeoutBehavior: Value(timeoutBehavior),
+      restCompletionBehavior: Value(restCompletionBehavior),
     );
   }
 
@@ -554,6 +584,9 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
         json['minimizeToTrayOnClose'],
       ),
       timeoutBehavior: serializer.fromJson<String>(json['timeoutBehavior']),
+      restCompletionBehavior: serializer.fromJson<String>(
+        json['restCompletionBehavior'],
+      ),
     );
   }
   @override
@@ -579,6 +612,9 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       'fixedPortraitEnabled': serializer.toJson<bool>(fixedPortraitEnabled),
       'minimizeToTrayOnClose': serializer.toJson<bool>(minimizeToTrayOnClose),
       'timeoutBehavior': serializer.toJson<String>(timeoutBehavior),
+      'restCompletionBehavior': serializer.toJson<String>(
+        restCompletionBehavior,
+      ),
     };
   }
 
@@ -598,6 +634,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     bool? fixedPortraitEnabled,
     bool? minimizeToTrayOnClose,
     String? timeoutBehavior,
+    String? restCompletionBehavior,
   }) => AppSettingsRow(
     id: id ?? this.id,
     workDurationMs: workDurationMs ?? this.workDurationMs,
@@ -616,6 +653,8 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     fixedPortraitEnabled: fixedPortraitEnabled ?? this.fixedPortraitEnabled,
     minimizeToTrayOnClose: minimizeToTrayOnClose ?? this.minimizeToTrayOnClose,
     timeoutBehavior: timeoutBehavior ?? this.timeoutBehavior,
+    restCompletionBehavior:
+        restCompletionBehavior ?? this.restCompletionBehavior,
   );
   AppSettingsRow copyWithCompanion(AppSettingsTableCompanion data) {
     return AppSettingsRow(
@@ -662,6 +701,9 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       timeoutBehavior: data.timeoutBehavior.present
           ? data.timeoutBehavior.value
           : this.timeoutBehavior,
+      restCompletionBehavior: data.restCompletionBehavior.present
+          ? data.restCompletionBehavior.value
+          : this.restCompletionBehavior,
     );
   }
 
@@ -682,7 +724,8 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
           ..write('pauseWhenLocked: $pauseWhenLocked, ')
           ..write('fixedPortraitEnabled: $fixedPortraitEnabled, ')
           ..write('minimizeToTrayOnClose: $minimizeToTrayOnClose, ')
-          ..write('timeoutBehavior: $timeoutBehavior')
+          ..write('timeoutBehavior: $timeoutBehavior, ')
+          ..write('restCompletionBehavior: $restCompletionBehavior')
           ..write(')'))
         .toString();
   }
@@ -704,6 +747,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     fixedPortraitEnabled,
     minimizeToTrayOnClose,
     timeoutBehavior,
+    restCompletionBehavior,
   );
   @override
   bool operator ==(Object other) =>
@@ -723,7 +767,8 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
           other.pauseWhenLocked == this.pauseWhenLocked &&
           other.fixedPortraitEnabled == this.fixedPortraitEnabled &&
           other.minimizeToTrayOnClose == this.minimizeToTrayOnClose &&
-          other.timeoutBehavior == this.timeoutBehavior);
+          other.timeoutBehavior == this.timeoutBehavior &&
+          other.restCompletionBehavior == this.restCompletionBehavior);
 }
 
 class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
@@ -742,6 +787,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
   final Value<bool> fixedPortraitEnabled;
   final Value<bool> minimizeToTrayOnClose;
   final Value<String> timeoutBehavior;
+  final Value<String> restCompletionBehavior;
   const AppSettingsTableCompanion({
     this.id = const Value.absent(),
     this.workDurationMs = const Value.absent(),
@@ -758,6 +804,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
     this.fixedPortraitEnabled = const Value.absent(),
     this.minimizeToTrayOnClose = const Value.absent(),
     this.timeoutBehavior = const Value.absent(),
+    this.restCompletionBehavior = const Value.absent(),
   });
   AppSettingsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -775,6 +822,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
     this.fixedPortraitEnabled = const Value.absent(),
     this.minimizeToTrayOnClose = const Value.absent(),
     this.timeoutBehavior = const Value.absent(),
+    this.restCompletionBehavior = const Value.absent(),
   }) : workDurationMs = Value(workDurationMs),
        restDurationMs = Value(restDurationMs),
        reminderIntervalMs = Value(reminderIntervalMs),
@@ -798,6 +846,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
     Expression<bool>? fixedPortraitEnabled,
     Expression<bool>? minimizeToTrayOnClose,
     Expression<String>? timeoutBehavior,
+    Expression<String>? restCompletionBehavior,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -822,6 +871,8 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
       if (minimizeToTrayOnClose != null)
         'minimize_to_tray_on_close': minimizeToTrayOnClose,
       if (timeoutBehavior != null) 'timeout_behavior': timeoutBehavior,
+      if (restCompletionBehavior != null)
+        'rest_completion_behavior': restCompletionBehavior,
     });
   }
 
@@ -841,6 +892,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
     Value<bool>? fixedPortraitEnabled,
     Value<bool>? minimizeToTrayOnClose,
     Value<String>? timeoutBehavior,
+    Value<String>? restCompletionBehavior,
   }) {
     return AppSettingsTableCompanion(
       id: id ?? this.id,
@@ -861,6 +913,8 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
       minimizeToTrayOnClose:
           minimizeToTrayOnClose ?? this.minimizeToTrayOnClose,
       timeoutBehavior: timeoutBehavior ?? this.timeoutBehavior,
+      restCompletionBehavior:
+          restCompletionBehavior ?? this.restCompletionBehavior,
     );
   }
 
@@ -920,6 +974,11 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
     if (timeoutBehavior.present) {
       map['timeout_behavior'] = Variable<String>(timeoutBehavior.value);
     }
+    if (restCompletionBehavior.present) {
+      map['rest_completion_behavior'] = Variable<String>(
+        restCompletionBehavior.value,
+      );
+    }
     return map;
   }
 
@@ -940,7 +999,8 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
           ..write('pauseWhenLocked: $pauseWhenLocked, ')
           ..write('fixedPortraitEnabled: $fixedPortraitEnabled, ')
           ..write('minimizeToTrayOnClose: $minimizeToTrayOnClose, ')
-          ..write('timeoutBehavior: $timeoutBehavior')
+          ..write('timeoutBehavior: $timeoutBehavior, ')
+          ..write('restCompletionBehavior: $restCompletionBehavior')
           ..write(')'))
         .toString();
   }
@@ -1094,6 +1154,18 @@ class $TimerSnapshotsTableTable extends TimerSnapshotsTable
     requiredDuringInsert: false,
     defaultValue: const Constant('nextCycle'),
   );
+  static const VerificationMeta _restCompletionBehaviorMeta =
+      const VerificationMeta('restCompletionBehavior');
+  @override
+  late final GeneratedColumn<String> restCompletionBehavior =
+      GeneratedColumn<String>(
+        'rest_completion_behavior',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('startWork'),
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1109,6 +1181,7 @@ class $TimerSnapshotsTableTable extends TimerSnapshotsTable
     reminderIntervalMs,
     reminderTimeoutMs,
     timeoutBehavior,
+    restCompletionBehavior,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1242,6 +1315,15 @@ class $TimerSnapshotsTableTable extends TimerSnapshotsTable
         ),
       );
     }
+    if (data.containsKey('rest_completion_behavior')) {
+      context.handle(
+        _restCompletionBehaviorMeta,
+        restCompletionBehavior.isAcceptableOrUnknown(
+          data['rest_completion_behavior']!,
+          _restCompletionBehaviorMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1303,6 +1385,10 @@ class $TimerSnapshotsTableTable extends TimerSnapshotsTable
         DriftSqlType.string,
         data['${effectivePrefix}timeout_behavior'],
       )!,
+      restCompletionBehavior: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rest_completion_behavior'],
+      )!,
     );
   }
 
@@ -1327,6 +1413,7 @@ class TimerSnapshotRow extends DataClass
   final int reminderIntervalMs;
   final int reminderTimeoutMs;
   final String timeoutBehavior;
+  final String restCompletionBehavior;
   const TimerSnapshotRow({
     required this.id,
     required this.cycleId,
@@ -1341,6 +1428,7 @@ class TimerSnapshotRow extends DataClass
     required this.reminderIntervalMs,
     required this.reminderTimeoutMs,
     required this.timeoutBehavior,
+    required this.restCompletionBehavior,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1362,6 +1450,7 @@ class TimerSnapshotRow extends DataClass
     map['reminder_interval_ms'] = Variable<int>(reminderIntervalMs);
     map['reminder_timeout_ms'] = Variable<int>(reminderTimeoutMs);
     map['timeout_behavior'] = Variable<String>(timeoutBehavior);
+    map['rest_completion_behavior'] = Variable<String>(restCompletionBehavior);
     return map;
   }
 
@@ -1384,6 +1473,7 @@ class TimerSnapshotRow extends DataClass
       reminderIntervalMs: Value(reminderIntervalMs),
       reminderTimeoutMs: Value(reminderTimeoutMs),
       timeoutBehavior: Value(timeoutBehavior),
+      restCompletionBehavior: Value(restCompletionBehavior),
     );
   }
 
@@ -1408,6 +1498,9 @@ class TimerSnapshotRow extends DataClass
       reminderIntervalMs: serializer.fromJson<int>(json['reminderIntervalMs']),
       reminderTimeoutMs: serializer.fromJson<int>(json['reminderTimeoutMs']),
       timeoutBehavior: serializer.fromJson<String>(json['timeoutBehavior']),
+      restCompletionBehavior: serializer.fromJson<String>(
+        json['restCompletionBehavior'],
+      ),
     );
   }
   @override
@@ -1427,6 +1520,9 @@ class TimerSnapshotRow extends DataClass
       'reminderIntervalMs': serializer.toJson<int>(reminderIntervalMs),
       'reminderTimeoutMs': serializer.toJson<int>(reminderTimeoutMs),
       'timeoutBehavior': serializer.toJson<String>(timeoutBehavior),
+      'restCompletionBehavior': serializer.toJson<String>(
+        restCompletionBehavior,
+      ),
     };
   }
 
@@ -1444,6 +1540,7 @@ class TimerSnapshotRow extends DataClass
     int? reminderIntervalMs,
     int? reminderTimeoutMs,
     String? timeoutBehavior,
+    String? restCompletionBehavior,
   }) => TimerSnapshotRow(
     id: id ?? this.id,
     cycleId: cycleId ?? this.cycleId,
@@ -1462,6 +1559,8 @@ class TimerSnapshotRow extends DataClass
     reminderIntervalMs: reminderIntervalMs ?? this.reminderIntervalMs,
     reminderTimeoutMs: reminderTimeoutMs ?? this.reminderTimeoutMs,
     timeoutBehavior: timeoutBehavior ?? this.timeoutBehavior,
+    restCompletionBehavior:
+        restCompletionBehavior ?? this.restCompletionBehavior,
   );
   TimerSnapshotRow copyWithCompanion(TimerSnapshotsTableCompanion data) {
     return TimerSnapshotRow(
@@ -1496,6 +1595,9 @@ class TimerSnapshotRow extends DataClass
       timeoutBehavior: data.timeoutBehavior.present
           ? data.timeoutBehavior.value
           : this.timeoutBehavior,
+      restCompletionBehavior: data.restCompletionBehavior.present
+          ? data.restCompletionBehavior.value
+          : this.restCompletionBehavior,
     );
   }
 
@@ -1514,7 +1616,8 @@ class TimerSnapshotRow extends DataClass
           ..write('restDurationMs: $restDurationMs, ')
           ..write('reminderIntervalMs: $reminderIntervalMs, ')
           ..write('reminderTimeoutMs: $reminderTimeoutMs, ')
-          ..write('timeoutBehavior: $timeoutBehavior')
+          ..write('timeoutBehavior: $timeoutBehavior, ')
+          ..write('restCompletionBehavior: $restCompletionBehavior')
           ..write(')'))
         .toString();
   }
@@ -1534,6 +1637,7 @@ class TimerSnapshotRow extends DataClass
     reminderIntervalMs,
     reminderTimeoutMs,
     timeoutBehavior,
+    restCompletionBehavior,
   );
   @override
   bool operator ==(Object other) =>
@@ -1551,7 +1655,8 @@ class TimerSnapshotRow extends DataClass
           other.restDurationMs == this.restDurationMs &&
           other.reminderIntervalMs == this.reminderIntervalMs &&
           other.reminderTimeoutMs == this.reminderTimeoutMs &&
-          other.timeoutBehavior == this.timeoutBehavior);
+          other.timeoutBehavior == this.timeoutBehavior &&
+          other.restCompletionBehavior == this.restCompletionBehavior);
 }
 
 class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
@@ -1568,6 +1673,7 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
   final Value<int> reminderIntervalMs;
   final Value<int> reminderTimeoutMs;
   final Value<String> timeoutBehavior;
+  final Value<String> restCompletionBehavior;
   const TimerSnapshotsTableCompanion({
     this.id = const Value.absent(),
     this.cycleId = const Value.absent(),
@@ -1582,6 +1688,7 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
     this.reminderIntervalMs = const Value.absent(),
     this.reminderTimeoutMs = const Value.absent(),
     this.timeoutBehavior = const Value.absent(),
+    this.restCompletionBehavior = const Value.absent(),
   });
   TimerSnapshotsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -1597,6 +1704,7 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
     required int reminderIntervalMs,
     required int reminderTimeoutMs,
     this.timeoutBehavior = const Value.absent(),
+    this.restCompletionBehavior = const Value.absent(),
   }) : cycleId = Value(cycleId),
        revision = Value(revision),
        phase = Value(phase),
@@ -1620,6 +1728,7 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
     Expression<int>? reminderIntervalMs,
     Expression<int>? reminderTimeoutMs,
     Expression<String>? timeoutBehavior,
+    Expression<String>? restCompletionBehavior,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1636,6 +1745,8 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
         'reminder_interval_ms': reminderIntervalMs,
       if (reminderTimeoutMs != null) 'reminder_timeout_ms': reminderTimeoutMs,
       if (timeoutBehavior != null) 'timeout_behavior': timeoutBehavior,
+      if (restCompletionBehavior != null)
+        'rest_completion_behavior': restCompletionBehavior,
     });
   }
 
@@ -1653,6 +1764,7 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
     Value<int>? reminderIntervalMs,
     Value<int>? reminderTimeoutMs,
     Value<String>? timeoutBehavior,
+    Value<String>? restCompletionBehavior,
   }) {
     return TimerSnapshotsTableCompanion(
       id: id ?? this.id,
@@ -1668,6 +1780,8 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
       reminderIntervalMs: reminderIntervalMs ?? this.reminderIntervalMs,
       reminderTimeoutMs: reminderTimeoutMs ?? this.reminderTimeoutMs,
       timeoutBehavior: timeoutBehavior ?? this.timeoutBehavior,
+      restCompletionBehavior:
+          restCompletionBehavior ?? this.restCompletionBehavior,
     );
   }
 
@@ -1713,6 +1827,11 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
     if (timeoutBehavior.present) {
       map['timeout_behavior'] = Variable<String>(timeoutBehavior.value);
     }
+    if (restCompletionBehavior.present) {
+      map['rest_completion_behavior'] = Variable<String>(
+        restCompletionBehavior.value,
+      );
+    }
     return map;
   }
 
@@ -1731,7 +1850,8 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
           ..write('restDurationMs: $restDurationMs, ')
           ..write('reminderIntervalMs: $reminderIntervalMs, ')
           ..write('reminderTimeoutMs: $reminderTimeoutMs, ')
-          ..write('timeoutBehavior: $timeoutBehavior')
+          ..write('timeoutBehavior: $timeoutBehavior, ')
+          ..write('restCompletionBehavior: $restCompletionBehavior')
           ..write(')'))
         .toString();
   }
@@ -3180,6 +3300,7 @@ typedef $$AppSettingsTableTableCreateCompanionBuilder =
       Value<bool> fixedPortraitEnabled,
       Value<bool> minimizeToTrayOnClose,
       Value<String> timeoutBehavior,
+      Value<String> restCompletionBehavior,
     });
 typedef $$AppSettingsTableTableUpdateCompanionBuilder =
     AppSettingsTableCompanion Function({
@@ -3198,6 +3319,7 @@ typedef $$AppSettingsTableTableUpdateCompanionBuilder =
       Value<bool> fixedPortraitEnabled,
       Value<bool> minimizeToTrayOnClose,
       Value<String> timeoutBehavior,
+      Value<String> restCompletionBehavior,
     });
 
 class $$AppSettingsTableTableFilterComposer
@@ -3281,6 +3403,11 @@ class $$AppSettingsTableTableFilterComposer
 
   ColumnFilters<String> get timeoutBehavior => $composableBuilder(
     column: $table.timeoutBehavior,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get restCompletionBehavior => $composableBuilder(
+    column: $table.restCompletionBehavior,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3368,6 +3495,11 @@ class $$AppSettingsTableTableOrderingComposer
     column: $table.timeoutBehavior,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get restCompletionBehavior => $composableBuilder(
+    column: $table.restCompletionBehavior,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppSettingsTableTableAnnotationComposer
@@ -3451,6 +3583,11 @@ class $$AppSettingsTableTableAnnotationComposer
     column: $table.timeoutBehavior,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get restCompletionBehavior => $composableBuilder(
+    column: $table.restCompletionBehavior,
+    builder: (column) => column,
+  );
 }
 
 class $$AppSettingsTableTableTableManager
@@ -3505,6 +3642,7 @@ class $$AppSettingsTableTableTableManager
                 Value<bool> fixedPortraitEnabled = const Value.absent(),
                 Value<bool> minimizeToTrayOnClose = const Value.absent(),
                 Value<String> timeoutBehavior = const Value.absent(),
+                Value<String> restCompletionBehavior = const Value.absent(),
               }) => AppSettingsTableCompanion(
                 id: id,
                 workDurationMs: workDurationMs,
@@ -3521,6 +3659,7 @@ class $$AppSettingsTableTableTableManager
                 fixedPortraitEnabled: fixedPortraitEnabled,
                 minimizeToTrayOnClose: minimizeToTrayOnClose,
                 timeoutBehavior: timeoutBehavior,
+                restCompletionBehavior: restCompletionBehavior,
               ),
           createCompanionCallback:
               ({
@@ -3539,6 +3678,7 @@ class $$AppSettingsTableTableTableManager
                 Value<bool> fixedPortraitEnabled = const Value.absent(),
                 Value<bool> minimizeToTrayOnClose = const Value.absent(),
                 Value<String> timeoutBehavior = const Value.absent(),
+                Value<String> restCompletionBehavior = const Value.absent(),
               }) => AppSettingsTableCompanion.insert(
                 id: id,
                 workDurationMs: workDurationMs,
@@ -3555,6 +3695,7 @@ class $$AppSettingsTableTableTableManager
                 fixedPortraitEnabled: fixedPortraitEnabled,
                 minimizeToTrayOnClose: minimizeToTrayOnClose,
                 timeoutBehavior: timeoutBehavior,
+                restCompletionBehavior: restCompletionBehavior,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -3596,6 +3737,7 @@ typedef $$TimerSnapshotsTableTableCreateCompanionBuilder =
       required int reminderIntervalMs,
       required int reminderTimeoutMs,
       Value<String> timeoutBehavior,
+      Value<String> restCompletionBehavior,
     });
 typedef $$TimerSnapshotsTableTableUpdateCompanionBuilder =
     TimerSnapshotsTableCompanion Function({
@@ -3612,6 +3754,7 @@ typedef $$TimerSnapshotsTableTableUpdateCompanionBuilder =
       Value<int> reminderIntervalMs,
       Value<int> reminderTimeoutMs,
       Value<String> timeoutBehavior,
+      Value<String> restCompletionBehavior,
     });
 
 class $$TimerSnapshotsTableTableFilterComposer
@@ -3685,6 +3828,11 @@ class $$TimerSnapshotsTableTableFilterComposer
 
   ColumnFilters<String> get timeoutBehavior => $composableBuilder(
     column: $table.timeoutBehavior,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get restCompletionBehavior => $composableBuilder(
+    column: $table.restCompletionBehavior,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3762,6 +3910,11 @@ class $$TimerSnapshotsTableTableOrderingComposer
     column: $table.timeoutBehavior,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get restCompletionBehavior => $composableBuilder(
+    column: $table.restCompletionBehavior,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TimerSnapshotsTableTableAnnotationComposer
@@ -3829,6 +3982,11 @@ class $$TimerSnapshotsTableTableAnnotationComposer
     column: $table.timeoutBehavior,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get restCompletionBehavior => $composableBuilder(
+    column: $table.restCompletionBehavior,
+    builder: (column) => column,
+  );
 }
 
 class $$TimerSnapshotsTableTableTableManager
@@ -3887,6 +4045,7 @@ class $$TimerSnapshotsTableTableTableManager
                 Value<int> reminderIntervalMs = const Value.absent(),
                 Value<int> reminderTimeoutMs = const Value.absent(),
                 Value<String> timeoutBehavior = const Value.absent(),
+                Value<String> restCompletionBehavior = const Value.absent(),
               }) => TimerSnapshotsTableCompanion(
                 id: id,
                 cycleId: cycleId,
@@ -3901,6 +4060,7 @@ class $$TimerSnapshotsTableTableTableManager
                 reminderIntervalMs: reminderIntervalMs,
                 reminderTimeoutMs: reminderTimeoutMs,
                 timeoutBehavior: timeoutBehavior,
+                restCompletionBehavior: restCompletionBehavior,
               ),
           createCompanionCallback:
               ({
@@ -3917,6 +4077,7 @@ class $$TimerSnapshotsTableTableTableManager
                 required int reminderIntervalMs,
                 required int reminderTimeoutMs,
                 Value<String> timeoutBehavior = const Value.absent(),
+                Value<String> restCompletionBehavior = const Value.absent(),
               }) => TimerSnapshotsTableCompanion.insert(
                 id: id,
                 cycleId: cycleId,
@@ -3931,6 +4092,7 @@ class $$TimerSnapshotsTableTableTableManager
                 reminderIntervalMs: reminderIntervalMs,
                 reminderTimeoutMs: reminderTimeoutMs,
                 timeoutBehavior: timeoutBehavior,
+                restCompletionBehavior: restCompletionBehavior,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

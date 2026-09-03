@@ -1,5 +1,7 @@
 enum TimeoutBehavior { nextCycle, stopTimer }
 
+enum RestCompletionBehavior { startWork, stopTimer, continueRest }
+
 final class TimerCycleConfig {
   const TimerCycleConfig({
     required this.workDuration,
@@ -7,6 +9,7 @@ final class TimerCycleConfig {
     required this.reminderInterval,
     required this.reminderTimeout,
     this.timeoutBehavior = TimeoutBehavior.nextCycle,
+    this.restCompletionBehavior = RestCompletionBehavior.startWork,
   });
 
   static const defaults = TimerCycleConfig(
@@ -21,4 +24,5 @@ final class TimerCycleConfig {
   final Duration reminderInterval;
   final Duration reminderTimeout;
   final TimeoutBehavior timeoutBehavior;
+  final RestCompletionBehavior restCompletionBehavior;
 }

@@ -18,6 +18,7 @@ abstract final class TimerReducer {
       SuspendTimerCommand value => _suspend(current, value, events),
       ResumeTimerCommand value => _resume(current, value, events),
       SkipRestCommand value => _skipRest(current, value, events),
+      CompleteRestCommand value => _completeRest(current, value, events),
       StopTimerCommand value => _stop(current, value, events),
       ReachDeadlineCommand value => _reconcile(
         current,
@@ -178,8 +179,7 @@ abstract final class TimerReducer {
     SkipRestCommand command,
     _EventFactory events,
   ) {
-    if (current.phase != TimerPhase.awaitingRest &&
-        current.phase != TimerPhase.resting) {
+    if (current.phase != TimerPhase.awaitingRest) {
       return TimerTransition.ignored(
         current,
         TimerIgnoredReason.invalidForCurrentPhase,
@@ -206,6 +206,41 @@ abstract final class TimerReducer {
     ]);
   }
 
+  static TimerTransition _completeRest(
+    TimerSnapshot current,
+    CompleteRestCommand command,
+    _EventFactory events,
+  ) {
+    if (current.phase != TimerPhase.resting ||
+        current.executionStatus != ExecutionStatus.active) {
+      return TimerTransition.ignored(
+        current,
+        TimerIgnoredReason.invalidForCurrentPhase,
+      );
+    }
+    final at = command.occurredAtUtc.toUtc();
+    final next = _workingSnapshot(
+      previous: current,
+      cycleId: command.nextCycleId,
+      config: command.nextCycleConfig,
+      atUtc: at,
+    );
+    final completedRest = _restDurationToRecord(current, at);
+    final restCompleted = completedRest >= current.cycleConfig.restDuration;
+    return _applied(next, [
+      if (restCompleted)
+        events.create(
+          current.cycleId,
+          TimerEventType.restCompleted,
+          at,
+          duration: completedRest,
+        )
+      else
+        events.create(current.cycleId, TimerEventType.restSkipped, at),
+      events.create(command.nextCycleId, TimerEventType.workStarted, at),
+    ]);
+  }
+
   static TimerTransition _stop(
     TimerSnapshot current,
     StopTimerCommand command,
@@ -224,6 +259,7 @@ abstract final class TimerReducer {
       cycleConfig: current.cycleConfig,
     );
     final completedWork = _workDurationToRecord(current, at);
+    final completedRest = _restDurationToRecord(current, at);
     return _applied(next, [
       if (completedWork > Duration.zero)
         events.create(
@@ -231,6 +267,13 @@ abstract final class TimerReducer {
           TimerEventType.workCompleted,
           at,
           duration: completedWork,
+        ),
+      if (completedRest >= current.cycleConfig.restDuration)
+        events.create(
+          current.cycleId,
+          TimerEventType.restCompleted,
+          at,
+          duration: completedRest,
         ),
       events.create(current.cycleId, TimerEventType.timerStopped, at),
     ]);
@@ -349,22 +392,53 @@ abstract final class TimerReducer {
           }
         case TimerPhase.resting:
           final previousCycleId = snapshot.cycleId;
-          final completedRestDuration = snapshot.cycleConfig.restDuration;
-          final generatedId = _cycleId(nextCycleId, cycleIndex++);
-          snapshot = _workingSnapshot(
-            previous: snapshot,
-            cycleId: generatedId,
-            config: nextCycleConfig,
-            atUtc: dueAt,
-          );
-          events
-            ..create(
-              previousCycleId,
-              TimerEventType.restCompleted,
+          if (snapshot.cycleConfig.restCompletionBehavior ==
+              RestCompletionBehavior.continueRest) {
+            snapshot = TimerSnapshot(
+              cycleId: snapshot.cycleId,
+              revision: snapshot.revision + 1,
+              phase: snapshot.phase,
+              executionStatus: snapshot.executionStatus,
+              startedAtUtc: snapshot.startedAtUtc,
+              deadlineAtUtc: null,
+              cycleConfig: snapshot.cycleConfig,
+            );
+          } else {
+            final completedRestDuration = _restDurationToRecord(
+              snapshot,
               dueAt,
-              duration: completedRestDuration,
-            )
-            ..create(generatedId, TimerEventType.workStarted, dueAt);
+            );
+            if (completedRestDuration > Duration.zero) {
+              events.create(
+                previousCycleId,
+                TimerEventType.restCompleted,
+                dueAt,
+                duration: completedRestDuration,
+              );
+            }
+            if (snapshot.cycleConfig.restCompletionBehavior ==
+                RestCompletionBehavior.stopTimer) {
+              snapshot = TimerSnapshot.idle(
+                revision: snapshot.revision + 1,
+                atUtc: dueAt,
+                cycleConfig: snapshot.cycleConfig,
+              );
+              events.create(
+                previousCycleId,
+                TimerEventType.timerStopped,
+                dueAt,
+              );
+            } else {
+              final generatedId = _cycleId(nextCycleId, cycleIndex++);
+              snapshot = _workingSnapshot(
+                previous: snapshot,
+                cycleId: generatedId,
+                config: nextCycleConfig,
+                atUtc: dueAt,
+              );
+              events.create(generatedId, TimerEventType.workStarted, dueAt);
+            }
+          }
       }
     }
 
@@ -412,6 +486,12 @@ abstract final class TimerReducer {
             : Duration.zero,
       TimerPhase.idle || TimerPhase.resting => Duration.zero,
     };
+  }
+
+  static Duration _restDurationToRecord(TimerSnapshot snapshot, DateTime at) {
+    if (snapshot.phase != TimerPhase.resting) return Duration.zero;
+    final elapsed = at.toUtc().difference(snapshot.startedAtUtc.toUtc());
+    return elapsed.isNegative ? Duration.zero : elapsed;
   }
 
   static Duration _elapsedWorkingDuration(TimerSnapshot snapshot, DateTime at) {

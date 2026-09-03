@@ -16,10 +16,18 @@ abstract final class TimerRecordMapper {
       reminderInterval: Duration(milliseconds: row.reminderIntervalMs),
       reminderTimeout: Duration(milliseconds: row.reminderTimeoutMs),
       timeoutBehavior: _timeoutBehaviorFromName(row.timeoutBehavior),
+      restCompletionBehavior: _restCompletionBehaviorFromJson(
+        row.restCompletionBehavior,
+      ),
     );
     _validateConfig(config);
     final phase = _timerPhase(row.phase);
-    if (phase != TimerPhase.idle && row.deadlineAtUtc == null) {
+    final allowsUnboundedRest =
+        phase == TimerPhase.resting &&
+        config.restCompletionBehavior == RestCompletionBehavior.continueRest;
+    if (phase != TimerPhase.idle &&
+        row.deadlineAtUtc == null &&
+        !allowsUnboundedRest) {
       throw const FormatException('Active timer snapshot has no deadline');
     }
     return TimerSnapshot(
@@ -55,6 +63,9 @@ abstract final class TimerRecordMapper {
         snapshot.cycleConfig.reminderTimeout.inMilliseconds,
       ),
       timeoutBehavior: Value(snapshot.cycleConfig.timeoutBehavior.name),
+      restCompletionBehavior: Value(
+        snapshot.cycleConfig.restCompletionBehavior.name,
+      ),
     );
   }
 
@@ -64,6 +75,7 @@ abstract final class TimerRecordMapper {
     SuspendTimerCommand() => 'suspendTimer',
     ResumeTimerCommand() => 'resumeTimer',
     SkipRestCommand() => 'skipRest',
+    CompleteRestCommand() => 'completeRest',
     StopTimerCommand() => 'stopTimer',
     ReachDeadlineCommand() => 'reachDeadline',
     ReconcileTimerCommand() => 'reconcileTimer',
@@ -89,6 +101,9 @@ abstract final class TimerRecordMapper {
       case ResumeTimerCommand():
         break;
       case SkipRestCommand value:
+        payload['nextCycleId'] = value.nextCycleId;
+        payload['nextCycleConfig'] = _configToJson(value.nextCycleConfig);
+      case CompleteRestCommand value:
         payload['nextCycleId'] = value.nextCycleId;
         payload['nextCycleConfig'] = _configToJson(value.nextCycleConfig);
       case StopTimerCommand():
@@ -139,6 +154,15 @@ abstract final class TimerRecordMapper {
         expectedRevision: common.expectedRevision,
       ),
       'skipRest' => SkipRestCommand(
+        commandId: common.commandId,
+        occurredAtUtc: common.occurredAtUtc,
+        nextCycleId: payload['nextCycleId']! as String,
+        nextCycleConfig: _configFromJson(payload['nextCycleConfig']),
+        expectedCycleId: common.expectedCycleId,
+        expectedPhase: common.expectedPhase,
+        expectedRevision: common.expectedRevision,
+      ),
+      'completeRest' => CompleteRestCommand(
         commandId: common.commandId,
         occurredAtUtc: common.occurredAtUtc,
         nextCycleId: payload['nextCycleId']! as String,
@@ -260,6 +284,7 @@ abstract final class TimerRecordMapper {
       'reminderIntervalMs': config.reminderInterval.inMilliseconds,
       'reminderTimeoutMs': config.reminderTimeout.inMilliseconds,
       'timeoutBehavior': config.timeoutBehavior.name,
+      'restCompletionBehavior': config.restCompletionBehavior.name,
     };
   }
 
@@ -273,6 +298,9 @@ abstract final class TimerRecordMapper {
       ),
       reminderTimeout: Duration(milliseconds: map['reminderTimeoutMs']! as int),
       timeoutBehavior: _timeoutBehaviorFromJson(map['timeoutBehavior']),
+      restCompletionBehavior: _restCompletionBehaviorFromJson(
+        map['restCompletionBehavior'],
+      ),
     );
     _validateConfig(config);
     return config;
@@ -287,6 +315,14 @@ abstract final class TimerRecordMapper {
     return value == 'stopTimer'
         ? TimeoutBehavior.stopTimer
         : TimeoutBehavior.nextCycle;
+  }
+
+  static RestCompletionBehavior _restCompletionBehaviorFromJson(Object? value) {
+    return switch (value as String?) {
+      'stopTimer' => RestCompletionBehavior.stopTimer,
+      'continueRest' => RestCompletionBehavior.continueRest,
+      _ => RestCompletionBehavior.startWork,
+    };
   }
 
   static TimerPhase _timerPhase(String value) => switch (value) {

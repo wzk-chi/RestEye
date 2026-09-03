@@ -69,6 +69,10 @@ final class TimerSnapshot {
   }
 
   Duration displayDurationAt(DateTime nowUtc) {
+    if (_isUnboundedRest) {
+      final elapsed = nowUtc.toUtc().difference(startedAtUtc.toUtc());
+      return elapsed.isNegative ? Duration.zero : elapsed;
+    }
     return displayDurationForRemaining(remainingAt(nowUtc));
   }
 
@@ -78,4 +82,9 @@ final class TimerSnapshot {
     return cycleConfig.workDuration +
         (overtime.isNegative ? Duration.zero : overtime);
   }
+
+  bool get _isUnboundedRest =>
+      phase == TimerPhase.resting &&
+      deadlineAtUtc == null &&
+      cycleConfig.restCompletionBehavior == RestCompletionBehavior.continueRest;
 }

@@ -201,6 +201,11 @@ class _SettingsContent extends ConsumerWidget {
                   ),
                 ),
                 const Divider(height: 1),
+                _RestCompletionBehaviorSelector(
+                  value: state.draft.restCompletionBehavior,
+                  onChanged: controller.setRestCompletionBehavior,
+                ),
+                const Divider(height: 1),
                 _DurationSlider(
                   title: strings.settingsReminderTimeout,
                   value: state.draft.reminderTimeout.inMinutes.toDouble(),
@@ -426,6 +431,60 @@ class _TimeoutBehaviorSelector extends StatelessWidget {
               ButtonSegment<TimeoutBehavior>(
                 value: TimeoutBehavior.stopTimer,
                 label: Text(strings.settingsTimeoutStopTimer),
+              ),
+            ],
+            selected: {value},
+            onSelectionChanged: (selection) {
+              if (selection.isNotEmpty) onChanged(selection.first);
+            },
+            showSelectedIcon: false,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RestCompletionBehaviorSelector extends StatelessWidget {
+  const _RestCompletionBehaviorSelector({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final RestCompletionBehavior value;
+  final ValueChanged<RestCompletionBehavior> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppLocalizations.of(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        context.spacing.md,
+        context.spacing.md,
+        context.spacing.md,
+        context.spacing.sm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            strings.settingsRestCompletionBehavior,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          SizedBox(height: context.spacing.md),
+          SegmentedButton<RestCompletionBehavior>(
+            segments: [
+              ButtonSegment<RestCompletionBehavior>(
+                value: RestCompletionBehavior.startWork,
+                label: Text(strings.settingsRestCompletionStartWork),
+              ),
+              ButtonSegment<RestCompletionBehavior>(
+                value: RestCompletionBehavior.stopTimer,
+                label: Text(strings.settingsRestCompletionStopTimer),
+              ),
+              ButtonSegment<RestCompletionBehavior>(
+                value: RestCompletionBehavior.continueRest,
+                label: Text(strings.settingsRestCompletionContinueRest),
               ),
             ],
             selected: {value},
