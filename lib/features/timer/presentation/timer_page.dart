@@ -308,7 +308,7 @@ class _CycleSummary extends StatelessWidget {
           ),
           Expanded(
             child: _SummaryItem(
-              icon: Icons.visibility_outlined,
+              icon: Icons.self_improvement_outlined,
               text: strings.timerRestDuration(restDuration),
               tooltip: strings.settingsEditValue(strings.settingsRestDuration),
               onTap: onEditRestDuration,
@@ -500,7 +500,7 @@ class _TimerActions extends StatelessWidget {
             ),
             TimerPhase.working || TimerPhase.awaitingRest => (
               strings.actionStartRest,
-              Icons.visibility_outlined,
+              Icons.self_improvement_outlined,
               onStartRest,
             ),
             TimerPhase.resting => (

@@ -399,6 +399,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutPrivacyBody => '眸息没有账号和云同步，设置与统计默认只保存在本机。';
 
   @override
+  String get aboutRepositoryTitle => 'GitHub 仓库';
+
+  @override
+  String get aboutRepositoryBody => 'github.com/wzk-chi/RestEye';
+
+  @override
+  String get aboutRepositoryOpenFailed => '无法打开 GitHub 仓库。';
+
+  @override
   String get bootstrapFailureTitle => '眸息暂时无法启动';
 
   @override

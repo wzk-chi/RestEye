@@ -176,7 +176,6 @@ class _ActivityTimelineCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final strings = AppLocalizations.of(context);
     final palette = _TimelinePalette.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -197,30 +196,10 @@ class _ActivityTimelineCard extends StatelessWidget {
         _StatisticsSurfaceCard(
           child: Padding(
             padding: EdgeInsets.all(context.spacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Wrap(
-                  spacing: context.spacing.lg,
-                  runSpacing: context.spacing.sm,
-                  children: [
-                    _TimelineLegendItem(
-                      color: palette.work,
-                      label: strings.statisticsTimelineWork,
-                    ),
-                    _TimelineLegendItem(
-                      color: palette.rest,
-                      label: strings.statisticsTimelineRest,
-                    ),
-                  ],
-                ),
-                SizedBox(height: context.spacing.lg),
-                _DailyTimelineContent(
-                  day: statistics,
-                  workColor: palette.work,
-                  restColor: palette.rest,
-                ),
-              ],
+            child: _DailyTimelineContent(
+              day: statistics,
+              workColor: palette.work,
+              restColor: palette.rest,
             ),
           ),
         ),
@@ -361,25 +340,6 @@ String _durationText(AppLocalizations strings, Duration duration) {
   return strings.durationSeconds(duration.inSeconds);
 }
 
-class _TimelineLegendItem extends StatelessWidget {
-  const _TimelineLegendItem({required this.color, required this.label});
-
-  final Color color;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        CircleAvatar(radius: 5, backgroundColor: color),
-        SizedBox(width: context.spacing.sm),
-        Text(label),
-      ],
-    );
-  }
-}
-
 class _TimelineEmptyState extends StatelessWidget {
   const _TimelineEmptyState({required this.message});
 
@@ -426,83 +386,26 @@ class _DailyTimelineContent extends StatelessWidget {
       );
     }
 
-    final locale = Localizations.localeOf(context).toString();
-    final dateFormat = DateFormat.yMMMd(locale);
-    final strings = AppLocalizations.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _DailyTimeline(
-          day: day,
-          dateFormat: dateFormat,
-          strings: strings,
-          workColor: workColor,
-          restColor: restColor,
-        ),
-      ],
-    );
+    return _DailyTimeline(day: day, workColor: workColor, restColor: restColor);
   }
 }
 
 class _DailyTimeline extends StatelessWidget {
   const _DailyTimeline({
     required this.day,
-    required this.dateFormat,
-    required this.strings,
     required this.workColor,
     required this.restColor,
   });
 
   final DailyStatistics day;
-  final DateFormat dateFormat;
-  final AppLocalizations strings;
   final Color workColor;
   final Color restColor;
 
   @override
   Widget build(BuildContext context) {
-    final date = DateTime.tryParse(day.localDateKey) ?? DateTime.now();
-    final textStyle = Theme.of(context).textTheme.bodySmall;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          dateFormat.format(date),
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
-        SizedBox(height: context.spacing.xs),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final stats = [
-              _DailyTimelineStat(
-                label: strings.statisticsTimelineWork,
-                value: _durationText(strings, day.workDuration),
-                style: textStyle,
-              ),
-              _DailyTimelineStat(
-                label: strings.statisticsTimelineRest,
-                value: _durationText(strings, day.restDuration),
-                style: textStyle,
-              ),
-              _DailyTimelineStat(
-                label: strings.statisticsRestCount,
-                value: strings.countTimes(day.restCount),
-                style: textStyle,
-              ),
-            ];
-            if (constraints.maxWidth < 560) {
-              return Wrap(
-                spacing: context.spacing.lg,
-                runSpacing: context.spacing.xs,
-                children: stats,
-              );
-            }
-            return Row(
-              children: [for (final stat in stats) Expanded(child: stat)],
-            );
-          },
-        ),
-        SizedBox(height: context.spacing.sm),
         _DayTimeline(
           localDateKey: day.localDateKey,
           segments: day.timelineSegments,
@@ -510,34 +413,6 @@ class _DailyTimeline extends StatelessWidget {
           restColor: restColor,
         ),
       ],
-    );
-  }
-}
-
-class _DailyTimelineStat extends StatelessWidget {
-  const _DailyTimelineStat({
-    required this.label,
-    required this.value,
-    required this.style,
-  });
-
-  final String label;
-  final String value;
-  final TextStyle? style;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text.rich(
-      TextSpan(
-        children: [
-          TextSpan(text: '$label '),
-          TextSpan(
-            text: value,
-            style: style?.copyWith(fontWeight: FontWeight.w600),
-          ),
-        ],
-      ),
-      style: style,
     );
   }
 }

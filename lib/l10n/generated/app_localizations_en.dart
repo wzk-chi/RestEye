@@ -423,6 +423,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'RestEye has no account or cloud sync. Settings and statistics stay on this device by default.';
 
   @override
+  String get aboutRepositoryTitle => 'GitHub repository';
+
+  @override
+  String get aboutRepositoryBody => 'github.com/wzk-chi/RestEye';
+
+  @override
+  String get aboutRepositoryOpenFailed =>
+      'Unable to open the GitHub repository.';
+
+  @override
   String get bootstrapFailureTitle => 'RestEye could not start';
 
   @override

@@ -824,6 +824,24 @@ abstract class AppLocalizations {
   /// **'眸息没有账号和云同步，设置与统计默认只保存在本机。'**
   String get aboutPrivacyBody;
 
+  /// No description provided for @aboutRepositoryTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'GitHub 仓库'**
+  String get aboutRepositoryTitle;
+
+  /// No description provided for @aboutRepositoryBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'github.com/wzk-chi/RestEye'**
+  String get aboutRepositoryBody;
+
+  /// No description provided for @aboutRepositoryOpenFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法打开 GitHub 仓库。'**
+  String get aboutRepositoryOpenFailed;
+
   /// No description provided for @bootstrapFailureTitle.
   ///
   /// In zh, this message translates to:

@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:rest_eye/app/theme/rest_eye_spacing.dart';
 import 'package:rest_eye/l10n/generated/app_localizations.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+final _repositoryUri = Uri.parse('https://github.com/wzk-chi/RestEye');
 
 final aboutPackageInfoProvider = FutureProvider<PackageInfo>(
   (ref) => PackageInfo.fromPlatform(),
@@ -75,6 +78,13 @@ class AboutPage extends ConsumerWidget {
                   title: strings.aboutPrivacyTitle,
                   body: strings.aboutPrivacyBody,
                 ),
+                SizedBox(height: context.spacing.md),
+                _AboutCard(
+                  icon: Icons.code_outlined,
+                  title: strings.aboutRepositoryTitle,
+                  body: strings.aboutRepositoryBody,
+                  onTap: () => _openRepository(context),
+                ),
               ],
             ),
           ),
@@ -89,35 +99,61 @@ class _AboutCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.body,
+    this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String body;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: EdgeInsets.all(context.spacing.lg),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: Theme.of(context).colorScheme.primary),
-            SizedBox(width: context.spacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.titleMedium),
-                  SizedBox(height: context.spacing.sm),
-                  Text(body),
-                ],
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.all(context.spacing.lg),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: Theme.of(context).colorScheme.primary),
+              SizedBox(width: context.spacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleMedium),
+                    SizedBox(height: context.spacing.sm),
+                    Text(body),
+                  ],
+                ),
               ),
-            ),
-          ],
+              if (onTap != null) ...[
+                SizedBox(width: context.spacing.md),
+                Icon(
+                  Icons.open_in_new,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
+  }
+}
+
+Future<void> _openRepository(BuildContext context) async {
+  final strings = AppLocalizations.of(context);
+  final opened = await launchUrl(
+    _repositoryUri,
+    mode: LaunchMode.externalApplication,
+  );
+  if (!opened && context.mounted) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(strings.aboutRepositoryOpenFailed)));
   }
 }
