@@ -101,18 +101,41 @@ final class TimerCommandDispatcher {
     return operation;
   }
 
-  Future<void> stopIfActive({required String source}) async {
+  Future<void> stopIfActive({
+    required String source,
+    DateTime? occurredAtUtc,
+  }) async {
     // The Android notification action handler can run in a background isolate
     // and commit a newer snapshot to the shared database. Do not make a
     // shutdown decision from this isolate's cached snapshot.
     final durable = await refreshFromRepository();
     if (!durable.isActive) return;
+    final now = _clock.utcNow;
+    var stoppedAt = occurredAtUtc ?? now;
+    if (stoppedAt.isBefore(durable.startedAtUtc)) {
+      stoppedAt = durable.startedAtUtc;
+    }
+    if (stoppedAt.isAfter(now)) stoppedAt = now;
     await dispatch(
       StopTimerCommand(
         commandId: createId('stop-$source'),
-        occurredAtUtc: _clock.utcNow,
+        occurredAtUtc: stoppedAt,
       ),
     );
+  }
+
+  Future<void> stopAbandonedTimer({required String source}) async {
+    final durable = await refreshFromRepository();
+    if (!durable.isActive) return;
+    final heartbeat = await _repository.loadLastHeartbeat();
+    await stopIfActive(
+      source: source,
+      occurredAtUtc: heartbeat ?? durable.startedAtUtc,
+    );
+  }
+
+  Future<void> recordHeartbeat() {
+    return _repository.recordHeartbeat(_clock.utcNow);
   }
 
   Future<TimerTransition> _execute(

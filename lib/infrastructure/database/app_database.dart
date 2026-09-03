@@ -29,7 +29,7 @@ final class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -125,6 +125,12 @@ final class AppDatabase extends _$AppDatabase {
         await migrator.addColumn(
           timerSnapshotsTable,
           timerSnapshotsTable.restCompletionBehavior,
+        );
+      }
+      if (from < 12) {
+        await migrator.addColumn(
+          timerSnapshotsTable,
+          timerSnapshotsTable.lastHeartbeatAtUtc,
         );
       }
     },

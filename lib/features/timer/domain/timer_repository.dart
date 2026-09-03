@@ -5,6 +5,10 @@ import 'package:rest_eye/features/timer/domain/timer_snapshot.dart';
 abstract interface class TimerRepository {
   Future<TimerSnapshot> loadSnapshot();
 
+  Future<DateTime?> loadLastHeartbeat();
+
+  Future<void> recordHeartbeat(DateTime atUtc);
+
   Future<void> commit({
     required int expectedRevision,
     required TimerSnapshot snapshot,

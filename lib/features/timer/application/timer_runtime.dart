@@ -45,12 +45,14 @@ final class TimerRuntime {
   StreamSubscription<AppLifecycleEvent>? _lifecycleSubscription;
   Timer? _deadlineTimer;
   Timer? _displayTimer;
+  Timer? _heartbeatTimer;
   Timer? _retryTimer;
   TimerSnapshot _snapshot = TimerSnapshot.idle();
   Duration _anchorRemaining = Duration.zero;
   Duration _anchorElapsed = Duration.zero;
   Future<void> _reconcileTail = Future.value();
   Future<void> _lifecycleStopTail = Future.value();
+  Future<void> _heartbeatTail = Future.value();
   var _deadlineRetryAttempt = 0;
   var _started = false;
   var _disposed = false;
@@ -64,6 +66,10 @@ final class TimerRuntime {
     _snapshotSubscription = _dispatcher.snapshots.listen(_onSnapshot);
     _lifecycleSubscription = _lifecycleGateway.events.listen(_onLifecycleEvent);
     _onSnapshot(_dispatcher.current);
+    _heartbeatTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _queueHeartbeat(),
+    );
   }
 
   void _onLifecycleEvent(AppLifecycleEvent event) {
@@ -71,11 +77,12 @@ final class TimerRuntime {
       case AppLifecycleEvent.resumed:
         _requestReconcile();
       case AppLifecycleEvent.detached:
+        _queueHeartbeat();
         _queueDetachedStop();
       case AppLifecycleEvent.inactive ||
           AppLifecycleEvent.paused ||
           AppLifecycleEvent.hidden:
-        break;
+        _queueHeartbeat();
     }
   }
 
@@ -112,6 +119,18 @@ final class TimerRuntime {
     _scheduleDeadline(snapshot);
     _updateDisplayTimer();
     _emitTick();
+    _queueHeartbeat();
+  }
+
+  void _queueHeartbeat() {
+    if (_disposed || !_snapshot.isActive) return;
+    final operation = _heartbeatTail.then((_) => _dispatcher.recordHeartbeat());
+    _heartbeatTail = operation.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace _) {
+        _logger.warning('Timer heartbeat failed', error: error);
+      },
+    );
   }
 
   void _updateDisplayTimer() {
@@ -243,10 +262,12 @@ final class TimerRuntime {
     _disposed = true;
     _deadlineTimer?.cancel();
     _displayTimer?.cancel();
+    _heartbeatTimer?.cancel();
     _retryTimer?.cancel();
     await _snapshotSubscription?.cancel();
     await _lifecycleSubscription?.cancel();
     await _lifecycleStopTail;
+    await _heartbeatTail;
     await _reconcileTail;
     await _lifecycleGateway.dispose();
     await _ticks.close();

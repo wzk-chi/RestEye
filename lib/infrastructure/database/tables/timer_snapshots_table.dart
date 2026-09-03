@@ -18,6 +18,8 @@ class TimerSnapshotsTable extends Table {
 
   DateTimeColumn get nextReminderAtUtc => dateTime().nullable()();
 
+  DateTimeColumn get lastHeartbeatAtUtc => dateTime().nullable()();
+
   IntColumn get workDurationMs => integer()();
 
   IntColumn get restDurationMs => integer()();

@@ -1099,6 +1099,17 @@ class $TimerSnapshotsTableTable extends TimerSnapshotsTable
         type: DriftSqlType.dateTime,
         requiredDuringInsert: false,
       );
+  static const VerificationMeta _lastHeartbeatAtUtcMeta =
+      const VerificationMeta('lastHeartbeatAtUtc');
+  @override
+  late final GeneratedColumn<DateTime> lastHeartbeatAtUtc =
+      GeneratedColumn<DateTime>(
+        'last_heartbeat_at_utc',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _workDurationMsMeta = const VerificationMeta(
     'workDurationMs',
   );
@@ -1176,6 +1187,7 @@ class $TimerSnapshotsTableTable extends TimerSnapshotsTable
     startedAtUtc,
     deadlineAtUtc,
     nextReminderAtUtc,
+    lastHeartbeatAtUtc,
     workDurationMs,
     restDurationMs,
     reminderIntervalMs,
@@ -1259,6 +1271,15 @@ class $TimerSnapshotsTableTable extends TimerSnapshotsTable
         nextReminderAtUtc.isAcceptableOrUnknown(
           data['next_reminder_at_utc']!,
           _nextReminderAtUtcMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_heartbeat_at_utc')) {
+      context.handle(
+        _lastHeartbeatAtUtcMeta,
+        lastHeartbeatAtUtc.isAcceptableOrUnknown(
+          data['last_heartbeat_at_utc']!,
+          _lastHeartbeatAtUtcMeta,
         ),
       );
     }
@@ -1365,6 +1386,10 @@ class $TimerSnapshotsTableTable extends TimerSnapshotsTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}next_reminder_at_utc'],
       ),
+      lastHeartbeatAtUtc: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_heartbeat_at_utc'],
+      ),
       workDurationMs: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}work_duration_ms'],
@@ -1408,6 +1433,7 @@ class TimerSnapshotRow extends DataClass
   final DateTime startedAtUtc;
   final DateTime? deadlineAtUtc;
   final DateTime? nextReminderAtUtc;
+  final DateTime? lastHeartbeatAtUtc;
   final int workDurationMs;
   final int restDurationMs;
   final int reminderIntervalMs;
@@ -1423,6 +1449,7 @@ class TimerSnapshotRow extends DataClass
     required this.startedAtUtc,
     this.deadlineAtUtc,
     this.nextReminderAtUtc,
+    this.lastHeartbeatAtUtc,
     required this.workDurationMs,
     required this.restDurationMs,
     required this.reminderIntervalMs,
@@ -1444,6 +1471,9 @@ class TimerSnapshotRow extends DataClass
     }
     if (!nullToAbsent || nextReminderAtUtc != null) {
       map['next_reminder_at_utc'] = Variable<DateTime>(nextReminderAtUtc);
+    }
+    if (!nullToAbsent || lastHeartbeatAtUtc != null) {
+      map['last_heartbeat_at_utc'] = Variable<DateTime>(lastHeartbeatAtUtc);
     }
     map['work_duration_ms'] = Variable<int>(workDurationMs);
     map['rest_duration_ms'] = Variable<int>(restDurationMs);
@@ -1468,6 +1498,9 @@ class TimerSnapshotRow extends DataClass
       nextReminderAtUtc: nextReminderAtUtc == null && nullToAbsent
           ? const Value.absent()
           : Value(nextReminderAtUtc),
+      lastHeartbeatAtUtc: lastHeartbeatAtUtc == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastHeartbeatAtUtc),
       workDurationMs: Value(workDurationMs),
       restDurationMs: Value(restDurationMs),
       reminderIntervalMs: Value(reminderIntervalMs),
@@ -1493,6 +1526,9 @@ class TimerSnapshotRow extends DataClass
       nextReminderAtUtc: serializer.fromJson<DateTime?>(
         json['nextReminderAtUtc'],
       ),
+      lastHeartbeatAtUtc: serializer.fromJson<DateTime?>(
+        json['lastHeartbeatAtUtc'],
+      ),
       workDurationMs: serializer.fromJson<int>(json['workDurationMs']),
       restDurationMs: serializer.fromJson<int>(json['restDurationMs']),
       reminderIntervalMs: serializer.fromJson<int>(json['reminderIntervalMs']),
@@ -1515,6 +1551,7 @@ class TimerSnapshotRow extends DataClass
       'startedAtUtc': serializer.toJson<DateTime>(startedAtUtc),
       'deadlineAtUtc': serializer.toJson<DateTime?>(deadlineAtUtc),
       'nextReminderAtUtc': serializer.toJson<DateTime?>(nextReminderAtUtc),
+      'lastHeartbeatAtUtc': serializer.toJson<DateTime?>(lastHeartbeatAtUtc),
       'workDurationMs': serializer.toJson<int>(workDurationMs),
       'restDurationMs': serializer.toJson<int>(restDurationMs),
       'reminderIntervalMs': serializer.toJson<int>(reminderIntervalMs),
@@ -1535,6 +1572,7 @@ class TimerSnapshotRow extends DataClass
     DateTime? startedAtUtc,
     Value<DateTime?> deadlineAtUtc = const Value.absent(),
     Value<DateTime?> nextReminderAtUtc = const Value.absent(),
+    Value<DateTime?> lastHeartbeatAtUtc = const Value.absent(),
     int? workDurationMs,
     int? restDurationMs,
     int? reminderIntervalMs,
@@ -1554,6 +1592,9 @@ class TimerSnapshotRow extends DataClass
     nextReminderAtUtc: nextReminderAtUtc.present
         ? nextReminderAtUtc.value
         : this.nextReminderAtUtc,
+    lastHeartbeatAtUtc: lastHeartbeatAtUtc.present
+        ? lastHeartbeatAtUtc.value
+        : this.lastHeartbeatAtUtc,
     workDurationMs: workDurationMs ?? this.workDurationMs,
     restDurationMs: restDurationMs ?? this.restDurationMs,
     reminderIntervalMs: reminderIntervalMs ?? this.reminderIntervalMs,
@@ -1580,6 +1621,9 @@ class TimerSnapshotRow extends DataClass
       nextReminderAtUtc: data.nextReminderAtUtc.present
           ? data.nextReminderAtUtc.value
           : this.nextReminderAtUtc,
+      lastHeartbeatAtUtc: data.lastHeartbeatAtUtc.present
+          ? data.lastHeartbeatAtUtc.value
+          : this.lastHeartbeatAtUtc,
       workDurationMs: data.workDurationMs.present
           ? data.workDurationMs.value
           : this.workDurationMs,
@@ -1612,6 +1656,7 @@ class TimerSnapshotRow extends DataClass
           ..write('startedAtUtc: $startedAtUtc, ')
           ..write('deadlineAtUtc: $deadlineAtUtc, ')
           ..write('nextReminderAtUtc: $nextReminderAtUtc, ')
+          ..write('lastHeartbeatAtUtc: $lastHeartbeatAtUtc, ')
           ..write('workDurationMs: $workDurationMs, ')
           ..write('restDurationMs: $restDurationMs, ')
           ..write('reminderIntervalMs: $reminderIntervalMs, ')
@@ -1632,6 +1677,7 @@ class TimerSnapshotRow extends DataClass
     startedAtUtc,
     deadlineAtUtc,
     nextReminderAtUtc,
+    lastHeartbeatAtUtc,
     workDurationMs,
     restDurationMs,
     reminderIntervalMs,
@@ -1651,6 +1697,7 @@ class TimerSnapshotRow extends DataClass
           other.startedAtUtc == this.startedAtUtc &&
           other.deadlineAtUtc == this.deadlineAtUtc &&
           other.nextReminderAtUtc == this.nextReminderAtUtc &&
+          other.lastHeartbeatAtUtc == this.lastHeartbeatAtUtc &&
           other.workDurationMs == this.workDurationMs &&
           other.restDurationMs == this.restDurationMs &&
           other.reminderIntervalMs == this.reminderIntervalMs &&
@@ -1668,6 +1715,7 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
   final Value<DateTime> startedAtUtc;
   final Value<DateTime?> deadlineAtUtc;
   final Value<DateTime?> nextReminderAtUtc;
+  final Value<DateTime?> lastHeartbeatAtUtc;
   final Value<int> workDurationMs;
   final Value<int> restDurationMs;
   final Value<int> reminderIntervalMs;
@@ -1683,6 +1731,7 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
     this.startedAtUtc = const Value.absent(),
     this.deadlineAtUtc = const Value.absent(),
     this.nextReminderAtUtc = const Value.absent(),
+    this.lastHeartbeatAtUtc = const Value.absent(),
     this.workDurationMs = const Value.absent(),
     this.restDurationMs = const Value.absent(),
     this.reminderIntervalMs = const Value.absent(),
@@ -1699,6 +1748,7 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
     required DateTime startedAtUtc,
     this.deadlineAtUtc = const Value.absent(),
     this.nextReminderAtUtc = const Value.absent(),
+    this.lastHeartbeatAtUtc = const Value.absent(),
     required int workDurationMs,
     required int restDurationMs,
     required int reminderIntervalMs,
@@ -1723,6 +1773,7 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
     Expression<DateTime>? startedAtUtc,
     Expression<DateTime>? deadlineAtUtc,
     Expression<DateTime>? nextReminderAtUtc,
+    Expression<DateTime>? lastHeartbeatAtUtc,
     Expression<int>? workDurationMs,
     Expression<int>? restDurationMs,
     Expression<int>? reminderIntervalMs,
@@ -1739,6 +1790,8 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
       if (startedAtUtc != null) 'started_at_utc': startedAtUtc,
       if (deadlineAtUtc != null) 'deadline_at_utc': deadlineAtUtc,
       if (nextReminderAtUtc != null) 'next_reminder_at_utc': nextReminderAtUtc,
+      if (lastHeartbeatAtUtc != null)
+        'last_heartbeat_at_utc': lastHeartbeatAtUtc,
       if (workDurationMs != null) 'work_duration_ms': workDurationMs,
       if (restDurationMs != null) 'rest_duration_ms': restDurationMs,
       if (reminderIntervalMs != null)
@@ -1759,6 +1812,7 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
     Value<DateTime>? startedAtUtc,
     Value<DateTime?>? deadlineAtUtc,
     Value<DateTime?>? nextReminderAtUtc,
+    Value<DateTime?>? lastHeartbeatAtUtc,
     Value<int>? workDurationMs,
     Value<int>? restDurationMs,
     Value<int>? reminderIntervalMs,
@@ -1775,6 +1829,7 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
       startedAtUtc: startedAtUtc ?? this.startedAtUtc,
       deadlineAtUtc: deadlineAtUtc ?? this.deadlineAtUtc,
       nextReminderAtUtc: nextReminderAtUtc ?? this.nextReminderAtUtc,
+      lastHeartbeatAtUtc: lastHeartbeatAtUtc ?? this.lastHeartbeatAtUtc,
       workDurationMs: workDurationMs ?? this.workDurationMs,
       restDurationMs: restDurationMs ?? this.restDurationMs,
       reminderIntervalMs: reminderIntervalMs ?? this.reminderIntervalMs,
@@ -1812,6 +1867,11 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
     if (nextReminderAtUtc.present) {
       map['next_reminder_at_utc'] = Variable<DateTime>(nextReminderAtUtc.value);
     }
+    if (lastHeartbeatAtUtc.present) {
+      map['last_heartbeat_at_utc'] = Variable<DateTime>(
+        lastHeartbeatAtUtc.value,
+      );
+    }
     if (workDurationMs.present) {
       map['work_duration_ms'] = Variable<int>(workDurationMs.value);
     }
@@ -1846,6 +1906,7 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
           ..write('startedAtUtc: $startedAtUtc, ')
           ..write('deadlineAtUtc: $deadlineAtUtc, ')
           ..write('nextReminderAtUtc: $nextReminderAtUtc, ')
+          ..write('lastHeartbeatAtUtc: $lastHeartbeatAtUtc, ')
           ..write('workDurationMs: $workDurationMs, ')
           ..write('restDurationMs: $restDurationMs, ')
           ..write('reminderIntervalMs: $reminderIntervalMs, ')
@@ -3732,6 +3793,7 @@ typedef $$TimerSnapshotsTableTableCreateCompanionBuilder =
       required DateTime startedAtUtc,
       Value<DateTime?> deadlineAtUtc,
       Value<DateTime?> nextReminderAtUtc,
+      Value<DateTime?> lastHeartbeatAtUtc,
       required int workDurationMs,
       required int restDurationMs,
       required int reminderIntervalMs,
@@ -3749,6 +3811,7 @@ typedef $$TimerSnapshotsTableTableUpdateCompanionBuilder =
       Value<DateTime> startedAtUtc,
       Value<DateTime?> deadlineAtUtc,
       Value<DateTime?> nextReminderAtUtc,
+      Value<DateTime?> lastHeartbeatAtUtc,
       Value<int> workDurationMs,
       Value<int> restDurationMs,
       Value<int> reminderIntervalMs,
@@ -3803,6 +3866,11 @@ class $$TimerSnapshotsTableTableFilterComposer
 
   ColumnFilters<DateTime> get nextReminderAtUtc => $composableBuilder(
     column: $table.nextReminderAtUtc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastHeartbeatAtUtc => $composableBuilder(
+    column: $table.lastHeartbeatAtUtc,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3886,6 +3954,11 @@ class $$TimerSnapshotsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get lastHeartbeatAtUtc => $composableBuilder(
+    column: $table.lastHeartbeatAtUtc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get workDurationMs => $composableBuilder(
     column: $table.workDurationMs,
     builder: (column) => ColumnOrderings(column),
@@ -3955,6 +4028,11 @@ class $$TimerSnapshotsTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get nextReminderAtUtc => $composableBuilder(
     column: $table.nextReminderAtUtc,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastHeartbeatAtUtc => $composableBuilder(
+    column: $table.lastHeartbeatAtUtc,
     builder: (column) => column,
   );
 
@@ -4040,6 +4118,7 @@ class $$TimerSnapshotsTableTableTableManager
                 Value<DateTime> startedAtUtc = const Value.absent(),
                 Value<DateTime?> deadlineAtUtc = const Value.absent(),
                 Value<DateTime?> nextReminderAtUtc = const Value.absent(),
+                Value<DateTime?> lastHeartbeatAtUtc = const Value.absent(),
                 Value<int> workDurationMs = const Value.absent(),
                 Value<int> restDurationMs = const Value.absent(),
                 Value<int> reminderIntervalMs = const Value.absent(),
@@ -4055,6 +4134,7 @@ class $$TimerSnapshotsTableTableTableManager
                 startedAtUtc: startedAtUtc,
                 deadlineAtUtc: deadlineAtUtc,
                 nextReminderAtUtc: nextReminderAtUtc,
+                lastHeartbeatAtUtc: lastHeartbeatAtUtc,
                 workDurationMs: workDurationMs,
                 restDurationMs: restDurationMs,
                 reminderIntervalMs: reminderIntervalMs,
@@ -4072,6 +4152,7 @@ class $$TimerSnapshotsTableTableTableManager
                 required DateTime startedAtUtc,
                 Value<DateTime?> deadlineAtUtc = const Value.absent(),
                 Value<DateTime?> nextReminderAtUtc = const Value.absent(),
+                Value<DateTime?> lastHeartbeatAtUtc = const Value.absent(),
                 required int workDurationMs,
                 required int restDurationMs,
                 required int reminderIntervalMs,
@@ -4087,6 +4168,7 @@ class $$TimerSnapshotsTableTableTableManager
                 startedAtUtc: startedAtUtc,
                 deadlineAtUtc: deadlineAtUtc,
                 nextReminderAtUtc: nextReminderAtUtc,
+                lastHeartbeatAtUtc: lastHeartbeatAtUtc,
                 workDurationMs: workDurationMs,
                 restDurationMs: restDurationMs,
                 reminderIntervalMs: reminderIntervalMs,

@@ -34,6 +34,31 @@ final class DriftTimerRepository implements TimerRepository {
   }
 
   @override
+  Future<DateTime?> loadLastHeartbeat() async {
+    try {
+      final query = _database.select(_database.timerSnapshotsTable)
+        ..where((table) => table.id.equals(1));
+      final row = await query.getSingleOrNull();
+      return row?.lastHeartbeatAtUtc?.toUtc();
+    } catch (error) {
+      throw PersistenceFailure('timer.heartbeat.load', cause: error);
+    }
+  }
+
+  @override
+  Future<void> recordHeartbeat(DateTime atUtc) async {
+    try {
+      await (_database.update(
+        _database.timerSnapshotsTable,
+      )..where((table) => table.id.equals(1))).write(
+        TimerSnapshotsTableCompanion(lastHeartbeatAtUtc: Value(atUtc.toUtc())),
+      );
+    } catch (error) {
+      throw PersistenceFailure('timer.heartbeat.save', cause: error);
+    }
+  }
+
+  @override
   Future<void> commit({
     required int expectedRevision,
     required TimerSnapshot snapshot,
