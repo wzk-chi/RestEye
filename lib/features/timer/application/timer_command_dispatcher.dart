@@ -102,7 +102,11 @@ final class TimerCommandDispatcher {
   }
 
   Future<void> stopIfActive({required String source}) async {
-    if (!_current.isActive) return;
+    // The Android notification action handler can run in a background isolate
+    // and commit a newer snapshot to the shared database. Do not make a
+    // shutdown decision from this isolate's cached snapshot.
+    final durable = await refreshFromRepository();
+    if (!durable.isActive) return;
     await dispatch(
       StopTimerCommand(
         commandId: createId('stop-$source'),

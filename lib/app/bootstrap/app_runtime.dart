@@ -43,6 +43,9 @@ final class AppRuntime {
       await dispatcher.stopIfActive(source: 'startup');
       await notificationActionCoordinator.initialize();
       await dispatcher.recover();
+      // Recovery may process an inbox action committed by another isolate.
+      // Startup must never leave an activity from the previous process alive.
+      await dispatcher.stopIfActive(source: 'startup-recovery');
       timerRuntime.start();
       await screenActivityRecorder.start();
       await screenLockPauseController.start();
