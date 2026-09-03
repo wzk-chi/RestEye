@@ -15,7 +15,12 @@ abstract final class TimerRecordMapper {
       restDuration: Duration(milliseconds: row.restDurationMs),
       reminderInterval: Duration(milliseconds: row.reminderIntervalMs),
       reminderTimeout: Duration(milliseconds: row.reminderTimeoutMs),
+      missedWorkReminderInterval: Duration(
+        milliseconds: row.missedWorkReminderIntervalMs,
+      ),
+      restTimeout: Duration(milliseconds: row.restTimeoutMs),
       timeoutBehavior: _timeoutBehaviorFromName(row.timeoutBehavior),
+      restTimeoutBehavior: _timeoutBehaviorFromName(row.restTimeoutBehavior),
       restCompletionBehavior: _restCompletionBehaviorFromJson(
         row.restCompletionBehavior,
       ),
@@ -62,7 +67,12 @@ abstract final class TimerRecordMapper {
       reminderTimeoutMs: Value(
         snapshot.cycleConfig.reminderTimeout.inMilliseconds,
       ),
+      missedWorkReminderIntervalMs: Value(
+        snapshot.cycleConfig.missedWorkReminderInterval.inMilliseconds,
+      ),
+      restTimeoutMs: Value(snapshot.cycleConfig.restTimeout.inMilliseconds),
       timeoutBehavior: Value(snapshot.cycleConfig.timeoutBehavior.name),
+      restTimeoutBehavior: Value(snapshot.cycleConfig.restTimeoutBehavior.name),
       restCompletionBehavior: Value(
         snapshot.cycleConfig.restCompletionBehavior.name,
       ),
@@ -283,7 +293,11 @@ abstract final class TimerRecordMapper {
       'restDurationMs': config.restDuration.inMilliseconds,
       'reminderIntervalMs': config.reminderInterval.inMilliseconds,
       'reminderTimeoutMs': config.reminderTimeout.inMilliseconds,
+      'missedWorkReminderIntervalMs':
+          config.missedWorkReminderInterval.inMilliseconds,
+      'restTimeoutMs': config.restTimeout.inMilliseconds,
       'timeoutBehavior': config.timeoutBehavior.name,
+      'restTimeoutBehavior': config.restTimeoutBehavior.name,
       'restCompletionBehavior': config.restCompletionBehavior.name,
     };
   }
@@ -297,7 +311,18 @@ abstract final class TimerRecordMapper {
         milliseconds: map['reminderIntervalMs']! as int,
       ),
       reminderTimeout: Duration(milliseconds: map['reminderTimeoutMs']! as int),
+      missedWorkReminderInterval: Duration(
+        milliseconds:
+            map['missedWorkReminderIntervalMs'] as int? ??
+            TimerCycleConfig.defaults.missedWorkReminderInterval.inMilliseconds,
+      ),
+      restTimeout: Duration(
+        milliseconds:
+            map['restTimeoutMs'] as int? ??
+            TimerCycleConfig.defaults.restTimeout.inMilliseconds,
+      ),
       timeoutBehavior: _timeoutBehaviorFromJson(map['timeoutBehavior']),
+      restTimeoutBehavior: _timeoutBehaviorFromJson(map['restTimeoutBehavior']),
       restCompletionBehavior: _restCompletionBehaviorFromJson(
         map['restCompletionBehavior'],
       ),
@@ -330,6 +355,7 @@ abstract final class TimerRecordMapper {
     'working' => TimerPhase.working,
     'awaitingRest' => TimerPhase.awaitingRest,
     'resting' => TimerPhase.resting,
+    'awaitingWork' => TimerPhase.awaitingWork,
     _ => throw FormatException('Unknown timer phase: $value'),
   };
 
@@ -343,7 +369,9 @@ abstract final class TimerRecordMapper {
     if (config.workDuration <= Duration.zero ||
         config.restDuration <= Duration.zero ||
         config.reminderInterval <= Duration.zero ||
-        config.reminderTimeout <= config.reminderInterval) {
+        config.reminderTimeout <= config.reminderInterval ||
+        config.missedWorkReminderInterval <= Duration.zero ||
+        config.restTimeout <= config.missedWorkReminderInterval) {
       throw const FormatException('Invalid timer cycle configuration');
     }
   }

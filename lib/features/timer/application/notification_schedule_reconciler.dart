@@ -80,6 +80,7 @@ final class NotificationScheduleReconciler {
         workReminderEnabled: settings.workReminderEnabled,
         restReminderEnabled: settings.restReminderEnabled,
         missedRestReminderEnabled: settings.missedRestReminderEnabled,
+        missedWorkReminderEnabled: settings.missedWorkReminderEnabled,
         maxPendingRequests: _gateway.maxPendingNotificationRequests,
       );
       final desired = plan.items;
@@ -93,6 +94,7 @@ final class NotificationScheduleReconciler {
         workReminderEnabled: settings.workReminderEnabled,
         restReminderEnabled: settings.restReminderEnabled,
         missedRestReminderEnabled: settings.missedRestReminderEnabled,
+        missedWorkReminderEnabled: settings.missedWorkReminderEnabled,
       );
       final duePreviousIds = duePrevious.map((item) => item.id).toSet();
       final obsoleteIds = existingIds
@@ -146,6 +148,7 @@ final class NotificationScheduleReconciler {
     required bool workReminderEnabled,
     required bool restReminderEnabled,
     required bool missedRestReminderEnabled,
+    required bool missedWorkReminderEnabled,
   }) {
     if (snapshot == null) return const [];
     final now = _clock.utcNow;
@@ -155,6 +158,7 @@ final class NotificationScheduleReconciler {
           workReminderEnabled: workReminderEnabled,
           restReminderEnabled: restReminderEnabled,
           missedRestReminderEnabled: missedRestReminderEnabled,
+          missedWorkReminderEnabled: missedWorkReminderEnabled,
           maxPendingRequests: _gateway.maxPendingNotificationRequests,
         ).items
         .where((notification) {
@@ -169,6 +173,7 @@ final class NotificationScheduleReconciler {
     required bool workReminderEnabled,
     required bool restReminderEnabled,
     required bool missedRestReminderEnabled,
+    required bool missedWorkReminderEnabled,
     required int maxPendingRequests,
   }) {
     if (snapshot.executionStatus == ExecutionStatus.suspended) {
@@ -230,17 +235,20 @@ final class NotificationScheduleReconciler {
         }
       case TimerPhase.resting:
         final deadline = snapshot.deadlineAtUtc;
-        if (snapshot.cycleConfig.restCompletionBehavior !=
-                RestCompletionBehavior.continueRest &&
-            workReminderEnabled &&
-            deadline != null) {
+        if (workReminderEnabled && deadline != null) {
           if (capacity > 0) {
             result.add(
               ScheduledNotification(
                 id: _notificationId(snapshot.cycleId, 'restComplete', deadline),
                 kind: NotificationKind.restComplete,
                 cycleId: snapshot.cycleId,
-                expectedPhase: TimerPhase.working,
+                expectedPhase:
+                    switch (snapshot.cycleConfig.restCompletionBehavior) {
+                      RestCompletionBehavior.startWork => TimerPhase.working,
+                      RestCompletionBehavior.stopTimer => TimerPhase.idle,
+                      RestCompletionBehavior.continueRest =>
+                        TimerPhase.awaitingWork,
+                    },
                 expectedRevision: snapshot.revision + 1,
                 scheduledAtUtc: deadline,
                 vibrationEnabled: vibrationEnabled,
@@ -250,6 +258,35 @@ final class NotificationScheduleReconciler {
           } else {
             truncated = true;
           }
+        }
+      case TimerPhase.awaitingWork:
+        final timeout = snapshot.deadlineAtUtc;
+        var reminder = snapshot.nextReminderAtUtc;
+        var occurrence = 0;
+        while (missedWorkReminderEnabled &&
+            timeout != null &&
+            reminder != null &&
+            reminder.isBefore(timeout)) {
+          if (occurrence < capacity) {
+            result.add(
+              ScheduledNotification(
+                id: _notificationId(snapshot.cycleId, 'workReminder', reminder),
+                kind: NotificationKind.restComplete,
+                cycleId: snapshot.cycleId,
+                expectedPhase: TimerPhase.awaitingWork,
+                expectedRevision: snapshot.revision + occurrence + 1,
+                scheduledAtUtc: reminder,
+                vibrationEnabled: vibrationEnabled,
+                hasRestActions: false,
+              ),
+            );
+          } else {
+            truncated = true;
+          }
+          reminder = reminder.add(
+            snapshot.cycleConfig.missedWorkReminderInterval,
+          );
+          occurrence++;
         }
     }
     return NotificationPlan(

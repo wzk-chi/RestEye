@@ -155,7 +155,7 @@ final class TimerRuntime {
     final dueAt = switch (snapshot.phase) {
       TimerPhase.idle => null,
       TimerPhase.working || TimerPhase.resting => snapshot.deadlineAtUtc,
-      TimerPhase.awaitingRest => _earlier(
+      TimerPhase.awaitingRest || TimerPhase.awaitingWork => _earlier(
         snapshot.deadlineAtUtc,
         snapshot.nextReminderAtUtc,
       ),
@@ -227,7 +227,7 @@ final class TimerRuntime {
         ? Duration.zero
         : calculated;
     final displayDuration = _snapshot.isContinuingRestAt(_clock.utcNow)
-        ? _nonNegativeDuration(_clock.utcNow.difference(_snapshot.startedAtUtc))
+        ? _snapshot.continuingRestDurationAt(_clock.utcNow)
         : _snapshot.displayDurationForRemaining(remaining);
     if (_debugLogging &&
         _snapshot.executionStatus == ExecutionStatus.suspended) {
@@ -251,10 +251,6 @@ final class TimerRuntime {
     if (first == null) return second;
     if (second == null) return first;
     return first.isBefore(second) ? first : second;
-  }
-
-  Duration _nonNegativeDuration(Duration value) {
-    return value.isNegative ? Duration.zero : value;
   }
 
   Future<void> dispose() async {

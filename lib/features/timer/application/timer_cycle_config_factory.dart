@@ -7,7 +7,10 @@ TimerCycleConfig timerCycleConfigFromSettings(AppSettings settings) {
     restDuration: settings.restDuration,
     reminderInterval: settings.reminderInterval,
     reminderTimeout: settings.reminderTimeout,
+    missedWorkReminderInterval: settings.missedWorkReminderInterval,
+    restTimeout: settings.restTimeout,
     timeoutBehavior: settings.timeoutBehavior,
+    restTimeoutBehavior: settings.restTimeoutBehavior,
     restCompletionBehavior: settings.restCompletionBehavior,
   );
 }

@@ -25,16 +25,22 @@ final class DriftSettingsRepository implements SettingsRepository {
         restDuration: Duration(milliseconds: row.restDurationMs),
         reminderInterval: Duration(milliseconds: row.reminderIntervalMs),
         reminderTimeout: Duration(milliseconds: row.reminderTimeoutMs),
+        missedWorkReminderInterval: Duration(
+          milliseconds: row.missedWorkReminderIntervalMs,
+        ),
+        restTimeout: Duration(milliseconds: row.restTimeoutMs),
         androidVibrationEnabled: row.androidVibrationEnabled,
         workReminderEnabled: row.workReminderEnabled,
         restReminderEnabled: row.restReminderEnabled,
         missedRestReminderEnabled: row.missedRestReminderEnabled,
+        missedWorkReminderEnabled: row.missedWorkReminderEnabled,
         localePreference: _localePreference(row.localeCode),
         themePreference: _themePreference(row.themeModeCode),
         pauseWhenLocked: row.pauseWhenLocked,
         fixedPortraitEnabled: row.fixedPortraitEnabled,
         minimizeToTrayOnClose: row.minimizeToTrayOnClose,
         timeoutBehavior: _timeoutBehavior(row.timeoutBehavior),
+        restTimeoutBehavior: _timeoutBehavior(row.restTimeoutBehavior),
         restCompletionBehavior: _restCompletionBehavior(
           row.restCompletionBehavior,
         ),
@@ -64,11 +70,18 @@ final class DriftSettingsRepository implements SettingsRepository {
                 settings.reminderInterval.inMilliseconds,
               ),
               reminderTimeoutMs: Value(settings.reminderTimeout.inMilliseconds),
+              missedWorkReminderIntervalMs: Value(
+                settings.missedWorkReminderInterval.inMilliseconds,
+              ),
+              restTimeoutMs: Value(settings.restTimeout.inMilliseconds),
               androidVibrationEnabled: Value(settings.androidVibrationEnabled),
               workReminderEnabled: Value(settings.workReminderEnabled),
               restReminderEnabled: Value(settings.restReminderEnabled),
               missedRestReminderEnabled: Value(
                 settings.missedRestReminderEnabled,
+              ),
+              missedWorkReminderEnabled: Value(
+                settings.missedWorkReminderEnabled,
               ),
               localeCode: Value(settings.localePreference.name),
               themeModeCode: Value(settings.themePreference.name),
@@ -76,6 +89,7 @@ final class DriftSettingsRepository implements SettingsRepository {
               fixedPortraitEnabled: Value(settings.fixedPortraitEnabled),
               minimizeToTrayOnClose: Value(settings.minimizeToTrayOnClose),
               timeoutBehavior: Value(settings.timeoutBehavior.name),
+              restTimeoutBehavior: Value(settings.restTimeoutBehavior.name),
               restCompletionBehavior: Value(
                 settings.restCompletionBehavior.name,
               ),
@@ -92,13 +106,12 @@ final class DriftSettingsRepository implements SettingsRepository {
     _ => TimeoutBehavior.nextCycle,
   };
 
-  RestCompletionBehavior _restCompletionBehavior(String value) => switch (
-    value
-  ) {
-    'stopTimer' => RestCompletionBehavior.stopTimer,
-    'continueRest' => RestCompletionBehavior.continueRest,
-    _ => RestCompletionBehavior.startWork,
-  };
+  RestCompletionBehavior _restCompletionBehavior(String value) =>
+      switch (value) {
+        'stopTimer' => RestCompletionBehavior.stopTimer,
+        'continueRest' => RestCompletionBehavior.continueRest,
+        _ => RestCompletionBehavior.startWork,
+      };
 
   AppLocalePreference _localePreference(String value) => switch (value) {
     'zh' => AppLocalePreference.zh,

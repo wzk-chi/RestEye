@@ -29,7 +29,7 @@ final class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -131,6 +131,36 @@ final class AppDatabase extends _$AppDatabase {
         await migrator.addColumn(
           timerSnapshotsTable,
           timerSnapshotsTable.lastHeartbeatAtUtc,
+        );
+      }
+      if (from < 13) {
+        await migrator.addColumn(
+          appSettingsTable,
+          appSettingsTable.missedWorkReminderIntervalMs,
+        );
+        await migrator.addColumn(
+          appSettingsTable,
+          appSettingsTable.restTimeoutMs,
+        );
+        await migrator.addColumn(
+          appSettingsTable,
+          appSettingsTable.missedWorkReminderEnabled,
+        );
+        await migrator.addColumn(
+          appSettingsTable,
+          appSettingsTable.restTimeoutBehavior,
+        );
+        await migrator.addColumn(
+          timerSnapshotsTable,
+          timerSnapshotsTable.missedWorkReminderIntervalMs,
+        );
+        await migrator.addColumn(
+          timerSnapshotsTable,
+          timerSnapshotsTable.restTimeoutMs,
+        );
+        await migrator.addColumn(
+          timerSnapshotsTable,
+          timerSnapshotsTable.restTimeoutBehavior,
         );
       }
     },

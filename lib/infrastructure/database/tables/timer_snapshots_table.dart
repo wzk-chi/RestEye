@@ -28,7 +28,16 @@ class TimerSnapshotsTable extends Table {
 
   IntColumn get reminderTimeoutMs => integer()();
 
+  IntColumn get missedWorkReminderIntervalMs =>
+      integer().withDefault(const Constant(180000))();
+
+  IntColumn get restTimeoutMs =>
+      integer().withDefault(const Constant(600000))();
+
   TextColumn get timeoutBehavior =>
+      text().withDefault(const Constant('nextCycle'))();
+
+  TextColumn get restTimeoutBehavior =>
       text().withDefault(const Constant('nextCycle'))();
 
   TextColumn get restCompletionBehavior =>

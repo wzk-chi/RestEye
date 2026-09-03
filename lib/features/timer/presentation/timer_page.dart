@@ -130,6 +130,7 @@ class TimerPage extends ConsumerWidget {
       TimerPhase.working => strings.timerPhaseWorking,
       TimerPhase.awaitingRest => strings.timerPhaseAwaitingRest,
       TimerPhase.resting => strings.timerPhaseResting,
+      TimerPhase.awaitingWork => strings.timerPhaseAwaitingWork,
     };
   }
 
@@ -146,6 +147,7 @@ class TimerPage extends ConsumerWidget {
       TimerPhase.working => strings.timerWorkingMessage,
       TimerPhase.awaitingRest => strings.timerAwaitingRestMessage,
       TimerPhase.resting => strings.timerRestingMessage,
+      TimerPhase.awaitingWork => strings.timerAwaitingWorkMessage,
     };
   }
 
@@ -154,7 +156,8 @@ class TimerPage extends ConsumerWidget {
     Duration remaining,
     Duration displayDuration,
   ) {
-    if (snapshot.phase == TimerPhase.awaitingRest) {
+    if (snapshot.phase == TimerPhase.awaitingRest ||
+        snapshot.phase == TimerPhase.awaitingWork) {
       return displayDuration.isNegative ? Duration.zero : displayDuration;
     }
     if (snapshot.phase == TimerPhase.resting &&
@@ -169,6 +172,7 @@ class TimerPage extends ConsumerWidget {
       TimerPhase.working => snapshot.cycleConfig.workDuration,
       TimerPhase.resting => snapshot.cycleConfig.restDuration,
       TimerPhase.awaitingRest => Duration.zero,
+      TimerPhase.awaitingWork => Duration.zero,
     };
     final elapsed = totalDuration - remaining;
     return elapsed.isNegative ? Duration.zero : elapsed;
@@ -188,6 +192,7 @@ class TimerPage extends ConsumerWidget {
       TimerPhase.working => scheme.primary,
       TimerPhase.awaitingRest => scheme.error,
       TimerPhase.resting => scheme.tertiary,
+      TimerPhase.awaitingWork => scheme.tertiary,
       TimerPhase.idle => scheme.outline,
     };
   }
@@ -248,7 +253,9 @@ class _LiveCountdown extends ConsumerWidget {
       live.remaining,
       live.displayDuration,
     );
-    final isResting = snapshot.phase == TimerPhase.resting;
+    final isResting =
+        snapshot.phase == TimerPhase.resting ||
+        snapshot.phase == TimerPhase.awaitingWork;
     final time = TimerPage._formatElapsed(elapsed);
     return CountdownCard(
       phase: phase,
@@ -493,7 +500,7 @@ class _TimerActions extends StatelessWidget {
               Icons.self_improvement_outlined,
               onStartRest,
             ),
-            TimerPhase.resting => (
+            TimerPhase.resting || TimerPhase.awaitingWork => (
               strings.actionStartWork,
               Icons.play_arrow,
               onStartWorkAfterRest,
@@ -513,7 +520,7 @@ class _TimerActions extends StatelessWidget {
               Icons.skip_next,
               onSkipRest,
             ),
-            TimerPhase.resting => (
+            TimerPhase.resting || TimerPhase.awaitingWork => (
               strings.actionStopTimer,
               Icons.stop_outlined,
               onStop,

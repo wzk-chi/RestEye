@@ -200,7 +200,7 @@ class _TrayMenuLocalizerState extends ConsumerState<_TrayMenuLocalizer> {
           label: strings.actionStopTimer,
         ),
       ],
-      TimerPhase.resting => [
+      TimerPhase.resting || TimerPhase.awaitingWork => [
         WindowTrayMenuItem(
           action: WindowTrayMenuAction.startWorkAfterRest,
           label: strings.actionStartWork,

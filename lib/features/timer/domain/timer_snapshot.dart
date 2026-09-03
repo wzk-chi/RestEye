@@ -45,6 +45,7 @@ final class TimerSnapshot {
     TimerPhase.working => cycleConfig.workDuration,
     TimerPhase.awaitingRest => cycleConfig.reminderTimeout,
     TimerPhase.resting => cycleConfig.restDuration,
+    TimerPhase.awaitingWork => cycleConfig.restTimeout,
   };
 
   Duration remainingAt(DateTime nowUtc) {
@@ -61,7 +62,9 @@ final class TimerSnapshot {
   }
 
   double progressForRemaining(Duration remaining) {
-    if (phase == TimerPhase.awaitingRest) return 1;
+    if (phase == TimerPhase.awaitingRest || phase == TimerPhase.awaitingWork) {
+      return 1;
+    }
     final total = phaseDuration.inMilliseconds;
     if (total <= 0) return 0;
     final clampedRemaining = remaining.inMilliseconds.clamp(0, total);
@@ -69,18 +72,27 @@ final class TimerSnapshot {
   }
 
   Duration displayDurationAt(DateTime nowUtc) {
+    if (phase == TimerPhase.awaitingWork) {
+      return displayDurationForRemaining(remainingAt(nowUtc));
+    }
     if (isContinuingRestAt(nowUtc)) {
-      final elapsed = nowUtc.toUtc().difference(startedAtUtc.toUtc());
-      return elapsed.isNegative ? Duration.zero : elapsed;
+      return continuingRestDurationAt(nowUtc);
     }
     return displayDurationForRemaining(remainingAt(nowUtc));
   }
 
   Duration displayDurationForRemaining(Duration remaining) {
-    if (phase != TimerPhase.awaitingRest) return remaining;
-    final overtime = cycleConfig.reminderTimeout - remaining;
-    return cycleConfig.workDuration +
-        (overtime.isNegative ? Duration.zero : overtime);
+    if (phase == TimerPhase.awaitingRest) {
+      final overtime = cycleConfig.reminderTimeout - remaining;
+      return cycleConfig.workDuration +
+          (overtime.isNegative ? Duration.zero : overtime);
+    }
+    if (phase == TimerPhase.awaitingWork) {
+      final overtime = cycleConfig.restTimeout - remaining;
+      return cycleConfig.restDuration +
+          (overtime.isNegative ? Duration.zero : overtime);
+    }
+    return remaining;
   }
 
   bool isContinuingRestAt(DateTime nowUtc) {
@@ -89,5 +101,11 @@ final class TimerSnapshot {
         cycleConfig.restCompletionBehavior ==
             RestCompletionBehavior.continueRest &&
         (deadline == null || !deadline.toUtc().isAfter(nowUtc.toUtc()));
+  }
+
+  Duration continuingRestDurationAt(DateTime nowUtc) {
+    final elapsed = nowUtc.toUtc().difference(startedAtUtc.toUtc());
+    final safeElapsed = elapsed.isNegative ? Duration.zero : elapsed;
+    return safeElapsed;
   }
 }

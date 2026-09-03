@@ -211,7 +211,8 @@ abstract final class TimerReducer {
     CompleteRestCommand command,
     _EventFactory events,
   ) {
-    if (current.phase != TimerPhase.resting ||
+    if ((current.phase != TimerPhase.resting &&
+            current.phase != TimerPhase.awaitingWork) ||
         current.executionStatus != ExecutionStatus.active) {
       return TimerTransition.ignored(
         current,
@@ -392,15 +393,23 @@ abstract final class TimerReducer {
           }
         case TimerPhase.resting:
           final previousCycleId = snapshot.cycleId;
+          events.create(previousCycleId, TimerEventType.workPrompted, dueAt);
           if (snapshot.cycleConfig.restCompletionBehavior ==
               RestCompletionBehavior.continueRest) {
+            final timeoutAt = dueAt.add(snapshot.cycleConfig.restTimeout);
+            final firstReminder = dueAt.add(
+              snapshot.cycleConfig.missedWorkReminderInterval,
+            );
             snapshot = TimerSnapshot(
               cycleId: snapshot.cycleId,
               revision: snapshot.revision + 1,
-              phase: snapshot.phase,
+              phase: TimerPhase.awaitingWork,
               executionStatus: snapshot.executionStatus,
-              startedAtUtc: snapshot.startedAtUtc,
-              deadlineAtUtc: null,
+              startedAtUtc: dueAt,
+              deadlineAtUtc: timeoutAt,
+              nextReminderAtUtc: firstReminder.isBefore(timeoutAt)
+                  ? firstReminder
+                  : null,
               cycleConfig: snapshot.cycleConfig,
             );
           } else {
@@ -439,6 +448,73 @@ abstract final class TimerReducer {
               events.create(generatedId, TimerEventType.workStarted, dueAt);
             }
           }
+        case TimerPhase.awaitingWork:
+          final timeoutAt = snapshot.deadlineAtUtc!;
+          final reminderAt = snapshot.nextReminderAtUtc;
+          if (reminderAt != null && reminderAt.isBefore(timeoutAt)) {
+            final following = reminderAt.add(
+              snapshot.cycleConfig.missedWorkReminderInterval,
+            );
+            snapshot = TimerSnapshot(
+              cycleId: snapshot.cycleId,
+              revision: snapshot.revision + 1,
+              phase: snapshot.phase,
+              executionStatus: snapshot.executionStatus,
+              startedAtUtc: snapshot.startedAtUtc,
+              deadlineAtUtc: timeoutAt,
+              nextReminderAtUtc: following.isBefore(timeoutAt)
+                  ? following
+                  : null,
+              cycleConfig: snapshot.cycleConfig,
+            );
+            events.create(
+              snapshot.cycleId,
+              TimerEventType.workReminder,
+              reminderAt,
+            );
+          } else {
+            final previousCycleId = snapshot.cycleId;
+            final completedRestDuration = _restDurationToRecord(
+              snapshot,
+              timeoutAt,
+            );
+            if (completedRestDuration > Duration.zero) {
+              events.create(
+                previousCycleId,
+                TimerEventType.restCompleted,
+                timeoutAt,
+                duration: completedRestDuration,
+              );
+            }
+            if (snapshot.cycleConfig.restTimeoutBehavior ==
+                TimeoutBehavior.stopTimer) {
+              snapshot = TimerSnapshot.idle(
+                revision: snapshot.revision + 1,
+                atUtc: timeoutAt,
+                cycleConfig: snapshot.cycleConfig,
+              );
+              events.create(
+                previousCycleId,
+                TimerEventType.workTimedOut,
+                timeoutAt,
+              );
+            } else {
+              final generatedId = _cycleId(nextCycleId, cycleIndex++);
+              snapshot = _workingSnapshot(
+                previous: snapshot,
+                cycleId: generatedId,
+                config: nextCycleConfig,
+                atUtc: timeoutAt,
+              );
+              events
+                ..create(
+                  previousCycleId,
+                  TimerEventType.workTimedOut,
+                  timeoutAt,
+                )
+                ..create(generatedId, TimerEventType.workStarted, timeoutAt);
+            }
+          }
       }
     }
 
@@ -470,7 +546,7 @@ abstract final class TimerReducer {
     return switch (snapshot.phase) {
       TimerPhase.idle => null,
       TimerPhase.working || TimerPhase.resting => snapshot.deadlineAtUtc,
-      TimerPhase.awaitingRest => _earlier(
+      TimerPhase.awaitingRest || TimerPhase.awaitingWork => _earlier(
         snapshot.deadlineAtUtc,
         snapshot.nextReminderAtUtc,
       ),
@@ -484,14 +560,23 @@ abstract final class TimerReducer {
         at.isAfter(snapshot.startedAtUtc)
             ? at.difference(snapshot.startedAtUtc)
             : Duration.zero,
-      TimerPhase.idle || TimerPhase.resting => Duration.zero,
+      TimerPhase.idle ||
+      TimerPhase.resting ||
+      TimerPhase.awaitingWork => Duration.zero,
     };
   }
 
   static Duration _restDurationToRecord(TimerSnapshot snapshot, DateTime at) {
-    if (snapshot.phase != TimerPhase.resting) return Duration.zero;
     final elapsed = at.toUtc().difference(snapshot.startedAtUtc.toUtc());
-    return elapsed.isNegative ? Duration.zero : elapsed;
+    final safeElapsed = elapsed.isNegative ? Duration.zero : elapsed;
+    return switch (snapshot.phase) {
+      TimerPhase.resting => safeElapsed,
+      TimerPhase.awaitingWork =>
+        snapshot.cycleConfig.restDuration + safeElapsed,
+      TimerPhase.idle ||
+      TimerPhase.working ||
+      TimerPhase.awaitingRest => Duration.zero,
+    };
   }
 
   static Duration _elapsedWorkingDuration(TimerSnapshot snapshot, DateTime at) {

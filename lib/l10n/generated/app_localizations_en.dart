@@ -43,6 +43,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get timerPhaseResting => 'Resting';
 
   @override
+  String get timerPhaseAwaitingWork => 'Rest overtime';
+
+  @override
   String get timerPhaseSuspended => 'Paused while locked';
 
   @override
@@ -60,6 +63,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get timerRestingMessage =>
       'Look away from the screen, blink slowly, and relax your shoulders.';
+
+  @override
+  String get timerAwaitingWorkMessage =>
+      'Your planned rest is complete. You can start the next work session.';
 
   @override
   String get timerSuspendedMessage => 'Work timing will resume after unlock.';
@@ -159,7 +166,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsWorkReminderDescription =>
-      'Remind you to start work after a rest.';
+      'Remind you to start work when the planned rest time is used up.';
+
+  @override
+  String get settingsMissedWorkReminder => 'Missed-work repeat reminder';
+
+  @override
+  String get settingsMissedWorkReminderDescription =>
+      'Repeat the reminder while you continue resting without starting work.';
+
+  @override
+  String get settingsMissedWorkReminderInterval =>
+      'Missed-work reminder interval';
 
   @override
   String get settingsRestReminder => 'Rest reminder';
@@ -182,7 +200,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsReminderTimeout => 'Missed-rest timeout';
 
   @override
-  String get settingsTimeoutBehavior => 'After a timeout';
+  String get settingsTimeoutBehavior => 'After a missed-rest timeout';
+
+  @override
+  String get settingsRestTimeout => 'Rest overtime limit';
+
+  @override
+  String get settingsRestTimeoutBehavior => 'After rest overtime';
 
   @override
   String get settingsTimeoutNextCycle => 'Next cycle';
@@ -294,6 +318,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'Timeout must be longer than the reminder interval.';
 
   @override
+  String get validationMissedWorkReminderRange =>
+      'Missed-work reminder interval must be between 1 and 30 minutes.';
+
+  @override
+  String get validationRestTimeoutRange =>
+      'Rest overtime must be between 2 and 120 minutes.';
+
+  @override
+  String get validationRestTimeoutAfterInterval =>
+      'Rest overtime must be longer than the missed-work reminder interval.';
+
+  @override
   String get statisticsTitle => 'Statistics';
 
   @override
@@ -370,10 +406,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Rest helps ease fatigue. Start resting now or skip this reminder.';
 
   @override
-  String get notificationRestCompleteTitle => 'Rest complete';
+  String get notificationRestCompleteTitle => 'Time to work';
 
   @override
-  String get notificationRestCompleteBody => 'Your rest time is up.';
+  String get notificationRestCompleteBody =>
+      'Your planned rest time is up. You can start the next work session.';
 
   @override
   String get notificationActionStartRest => 'Start rest';

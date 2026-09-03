@@ -8,7 +8,10 @@ final class TimerCycleConfig {
     required this.restDuration,
     required this.reminderInterval,
     required this.reminderTimeout,
+    required this.missedWorkReminderInterval,
+    required this.restTimeout,
     this.timeoutBehavior = TimeoutBehavior.nextCycle,
+    this.restTimeoutBehavior = TimeoutBehavior.nextCycle,
     this.restCompletionBehavior = RestCompletionBehavior.startWork,
   });
 
@@ -17,12 +20,17 @@ final class TimerCycleConfig {
     restDuration: Duration(seconds: 20),
     reminderInterval: Duration(minutes: 3),
     reminderTimeout: Duration(minutes: 10),
+    missedWorkReminderInterval: Duration(minutes: 3),
+    restTimeout: Duration(minutes: 10),
   );
 
   final Duration workDuration;
   final Duration restDuration;
   final Duration reminderInterval;
   final Duration reminderTimeout;
+  final Duration missedWorkReminderInterval;
+  final Duration restTimeout;
   final TimeoutBehavior timeoutBehavior;
+  final TimeoutBehavior restTimeoutBehavior;
   final RestCompletionBehavior restCompletionBehavior;
 }

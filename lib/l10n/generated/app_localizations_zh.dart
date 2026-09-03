@@ -43,6 +43,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get timerPhaseResting => '休息中';
 
   @override
+  String get timerPhaseAwaitingWork => '休息超时';
+
+  @override
   String get timerPhaseSuspended => '锁屏暂停中';
 
   @override
@@ -56,6 +59,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get timerRestingMessage => '离开屏幕，缓慢眨眼并放松肩颈。';
+
+  @override
+  String get timerAwaitingWorkMessage => '休息时间已到，可以开始下一轮工作。';
 
   @override
   String get timerSuspendedMessage => '解锁后将继续本轮工作计时。';
@@ -153,7 +159,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsWorkReminder => '工作提醒';
 
   @override
-  String get settingsWorkReminderDescription => '休息结束后提醒开始工作。';
+  String get settingsWorkReminderDescription => '休息时间用完时提醒开始工作。';
+
+  @override
+  String get settingsMissedWorkReminder => '未工作重复提醒';
+
+  @override
+  String get settingsMissedWorkReminderDescription => '继续休息且未开始工作时，按设定间隔重复提醒。';
+
+  @override
+  String get settingsMissedWorkReminderInterval => '未工作提醒间隔';
 
   @override
   String get settingsRestReminder => '休息提醒';
@@ -174,7 +189,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsReminderTimeout => '未休息超时时间';
 
   @override
-  String get settingsTimeoutBehavior => '超时后处理';
+  String get settingsTimeoutBehavior => '未休息超时后处理';
+
+  @override
+  String get settingsRestTimeout => '休息超时时间';
+
+  @override
+  String get settingsRestTimeoutBehavior => '休息超时后处理';
 
   @override
   String get settingsTimeoutNextCycle => '进入下一轮';
@@ -278,6 +299,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get validationTimeoutAfterInterval => '超时时间必须大于提醒间隔。';
 
   @override
+  String get validationMissedWorkReminderRange => '未工作提醒间隔需在 1 至 30 分钟之间。';
+
+  @override
+  String get validationRestTimeoutRange => '休息超时时间需在 2 至 120 分钟之间。';
+
+  @override
+  String get validationRestTimeoutAfterInterval => '休息超时时间必须大于未工作提醒间隔。';
+
+  @override
   String get statisticsTitle => '统计';
 
   @override
@@ -349,10 +379,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get notificationRestReminderBody => '休息有助于缓解疲劳，现在开始休息，或跳过本轮提醒。';
 
   @override
-  String get notificationRestCompleteTitle => '休息完成';
+  String get notificationRestCompleteTitle => '该开始工作了';
 
   @override
-  String get notificationRestCompleteBody => '休息时间已到。';
+  String get notificationRestCompleteBody => '休息时间已用完，可以开始下一轮工作了。';
 
   @override
   String get notificationActionStartRest => '开始休息';

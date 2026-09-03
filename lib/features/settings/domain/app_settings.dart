@@ -11,16 +11,20 @@ final class AppSettings {
     required this.restDuration,
     required this.reminderInterval,
     required this.reminderTimeout,
+    required this.missedWorkReminderInterval,
+    required this.restTimeout,
     required this.androidVibrationEnabled,
     required this.workReminderEnabled,
     required this.restReminderEnabled,
     required this.missedRestReminderEnabled,
+    required this.missedWorkReminderEnabled,
     required this.localePreference,
     required this.themePreference,
     this.pauseWhenLocked = false,
     this.fixedPortraitEnabled = true,
     this.minimizeToTrayOnClose = true,
     this.timeoutBehavior = TimeoutBehavior.nextCycle,
+    this.restTimeoutBehavior = TimeoutBehavior.nextCycle,
     this.restCompletionBehavior = RestCompletionBehavior.startWork,
   });
 
@@ -29,10 +33,13 @@ final class AppSettings {
     restDuration: Duration(seconds: 20),
     reminderInterval: Duration(minutes: 3),
     reminderTimeout: Duration(minutes: 10),
+    missedWorkReminderInterval: Duration(minutes: 3),
+    restTimeout: Duration(minutes: 10),
     androidVibrationEnabled: true,
     workReminderEnabled: true,
     restReminderEnabled: true,
     missedRestReminderEnabled: true,
+    missedWorkReminderEnabled: true,
     localePreference: AppLocalePreference.system,
     themePreference: AppThemePreference.system,
   );
@@ -50,16 +57,20 @@ final class AppSettings {
   final Duration restDuration;
   final Duration reminderInterval;
   final Duration reminderTimeout;
+  final Duration missedWorkReminderInterval;
+  final Duration restTimeout;
   final bool androidVibrationEnabled;
   final bool workReminderEnabled;
   final bool restReminderEnabled;
   final bool missedRestReminderEnabled;
+  final bool missedWorkReminderEnabled;
   final AppLocalePreference localePreference;
   final AppThemePreference themePreference;
   final bool pauseWhenLocked;
   final bool fixedPortraitEnabled;
   final bool minimizeToTrayOnClose;
   final TimeoutBehavior timeoutBehavior;
+  final TimeoutBehavior restTimeoutBehavior;
   final RestCompletionBehavior restCompletionBehavior;
 
   ValidationFailureCode? validate() {
@@ -80,6 +91,16 @@ final class AppSettings {
     if (reminderTimeout <= reminderInterval) {
       return ValidationFailureCode.reminderTimeoutNotAfterInterval;
     }
+    if (missedWorkReminderInterval < minReminderInterval ||
+        missedWorkReminderInterval > maxReminderInterval) {
+      return ValidationFailureCode.missedWorkReminderIntervalOutOfRange;
+    }
+    if (restTimeout < minReminderTimeout || restTimeout > maxReminderTimeout) {
+      return ValidationFailureCode.restTimeoutOutOfRange;
+    }
+    if (restTimeout <= missedWorkReminderInterval) {
+      return ValidationFailureCode.restTimeoutNotAfterInterval;
+    }
     return null;
   }
 
@@ -88,16 +109,20 @@ final class AppSettings {
     Duration? restDuration,
     Duration? reminderInterval,
     Duration? reminderTimeout,
+    Duration? missedWorkReminderInterval,
+    Duration? restTimeout,
     bool? androidVibrationEnabled,
     bool? workReminderEnabled,
     bool? restReminderEnabled,
     bool? missedRestReminderEnabled,
+    bool? missedWorkReminderEnabled,
     AppLocalePreference? localePreference,
     AppThemePreference? themePreference,
     bool? pauseWhenLocked,
     bool? fixedPortraitEnabled,
     bool? minimizeToTrayOnClose,
     TimeoutBehavior? timeoutBehavior,
+    TimeoutBehavior? restTimeoutBehavior,
     RestCompletionBehavior? restCompletionBehavior,
   }) {
     return AppSettings(
@@ -105,12 +130,17 @@ final class AppSettings {
       restDuration: restDuration ?? this.restDuration,
       reminderInterval: reminderInterval ?? this.reminderInterval,
       reminderTimeout: reminderTimeout ?? this.reminderTimeout,
+      missedWorkReminderInterval:
+          missedWorkReminderInterval ?? this.missedWorkReminderInterval,
+      restTimeout: restTimeout ?? this.restTimeout,
       androidVibrationEnabled:
           androidVibrationEnabled ?? this.androidVibrationEnabled,
       workReminderEnabled: workReminderEnabled ?? this.workReminderEnabled,
       restReminderEnabled: restReminderEnabled ?? this.restReminderEnabled,
       missedRestReminderEnabled:
           missedRestReminderEnabled ?? this.missedRestReminderEnabled,
+      missedWorkReminderEnabled:
+          missedWorkReminderEnabled ?? this.missedWorkReminderEnabled,
       localePreference: localePreference ?? this.localePreference,
       themePreference: themePreference ?? this.themePreference,
       pauseWhenLocked: pauseWhenLocked ?? this.pauseWhenLocked,
@@ -118,6 +148,7 @@ final class AppSettings {
       minimizeToTrayOnClose:
           minimizeToTrayOnClose ?? this.minimizeToTrayOnClose,
       timeoutBehavior: timeoutBehavior ?? this.timeoutBehavior,
+      restTimeoutBehavior: restTimeoutBehavior ?? this.restTimeoutBehavior,
       restCompletionBehavior:
           restCompletionBehavior ?? this.restCompletionBehavior,
     );
@@ -131,16 +162,20 @@ final class AppSettings {
           restDuration == other.restDuration &&
           reminderInterval == other.reminderInterval &&
           reminderTimeout == other.reminderTimeout &&
+          missedWorkReminderInterval == other.missedWorkReminderInterval &&
+          restTimeout == other.restTimeout &&
           androidVibrationEnabled == other.androidVibrationEnabled &&
           workReminderEnabled == other.workReminderEnabled &&
           restReminderEnabled == other.restReminderEnabled &&
           missedRestReminderEnabled == other.missedRestReminderEnabled &&
+          missedWorkReminderEnabled == other.missedWorkReminderEnabled &&
           localePreference == other.localePreference &&
           themePreference == other.themePreference &&
           pauseWhenLocked == other.pauseWhenLocked &&
           fixedPortraitEnabled == other.fixedPortraitEnabled &&
           minimizeToTrayOnClose == other.minimizeToTrayOnClose &&
           timeoutBehavior == other.timeoutBehavior &&
+          restTimeoutBehavior == other.restTimeoutBehavior &&
           restCompletionBehavior == other.restCompletionBehavior;
 
   @override
@@ -149,16 +184,20 @@ final class AppSettings {
     restDuration,
     reminderInterval,
     reminderTimeout,
+    missedWorkReminderInterval,
+    restTimeout,
     androidVibrationEnabled,
     workReminderEnabled,
     restReminderEnabled,
     missedRestReminderEnabled,
+    missedWorkReminderEnabled,
     localePreference,
     themePreference,
     pauseWhenLocked,
     fixedPortraitEnabled,
     minimizeToTrayOnClose,
     timeoutBehavior,
+    restTimeoutBehavior,
     restCompletionBehavior,
   );
 }

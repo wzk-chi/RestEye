@@ -9,6 +9,9 @@ enum TimerEventType {
   restCompleted,
   restSkipped,
   restTimedOut,
+  workPrompted,
+  workReminder,
+  workTimedOut,
   timerStopped,
   recoveryLimitReached,
 }

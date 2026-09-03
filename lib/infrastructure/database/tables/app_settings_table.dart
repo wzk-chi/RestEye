@@ -12,6 +12,12 @@ class AppSettingsTable extends Table {
 
   IntColumn get reminderTimeoutMs => integer()();
 
+  IntColumn get missedWorkReminderIntervalMs =>
+      integer().withDefault(const Constant(180000))();
+
+  IntColumn get restTimeoutMs =>
+      integer().withDefault(const Constant(600000))();
+
   BoolColumn get androidVibrationEnabled => boolean()();
 
   BoolColumn get workReminderEnabled =>
@@ -21,6 +27,9 @@ class AppSettingsTable extends Table {
       boolean().withDefault(const Constant(true))();
 
   BoolColumn get missedRestReminderEnabled =>
+      boolean().withDefault(const Constant(true))();
+
+  BoolColumn get missedWorkReminderEnabled =>
       boolean().withDefault(const Constant(true))();
 
   TextColumn get localeCode => text()();
@@ -37,6 +46,9 @@ class AppSettingsTable extends Table {
       boolean().withDefault(const Constant(true))();
 
   TextColumn get timeoutBehavior =>
+      text().withDefault(const Constant('nextCycle'))();
+
+  TextColumn get restTimeoutBehavior =>
       text().withDefault(const Constant('nextCycle'))();
 
   TextColumn get restCompletionBehavior =>

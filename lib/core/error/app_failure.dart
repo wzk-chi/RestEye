@@ -11,6 +11,9 @@ enum ValidationFailureCode {
   reminderIntervalOutOfRange,
   reminderTimeoutOutOfRange,
   reminderTimeoutNotAfterInterval,
+  missedWorkReminderIntervalOutOfRange,
+  restTimeoutOutOfRange,
+  restTimeoutNotAfterInterval,
 }
 
 final class ValidationFailure extends AppFailure {

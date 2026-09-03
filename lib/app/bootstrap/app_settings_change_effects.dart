@@ -42,6 +42,8 @@ final class AppSettingsChangeEffects implements SettingsChangeEffects {
         previous.restReminderEnabled != current.restReminderEnabled ||
         previous.missedRestReminderEnabled !=
             current.missedRestReminderEnabled ||
+        previous.missedWorkReminderEnabled !=
+            current.missedWorkReminderEnabled ||
         previous.localePreference != current.localePreference;
     if (notificationSettingsChanged) {
       await _notificationReconciler.reconcile(

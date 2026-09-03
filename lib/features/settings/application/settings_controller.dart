@@ -82,8 +82,20 @@ final class SettingsController extends AsyncNotifier<SettingsViewState> {
     _update((settings) => settings.copyWith(reminderTimeout: value));
   }
 
+  void setMissedWorkReminderInterval(Duration value) {
+    _update((settings) => settings.copyWith(missedWorkReminderInterval: value));
+  }
+
+  void setRestTimeout(Duration value) {
+    _update((settings) => settings.copyWith(restTimeout: value));
+  }
+
   void setTimeoutBehavior(TimeoutBehavior value) {
     _update((settings) => settings.copyWith(timeoutBehavior: value));
+  }
+
+  void setRestTimeoutBehavior(TimeoutBehavior value) {
+    _update((settings) => settings.copyWith(restTimeoutBehavior: value));
   }
 
   void setRestCompletionBehavior(RestCompletionBehavior value) {
@@ -104,6 +116,10 @@ final class SettingsController extends AsyncNotifier<SettingsViewState> {
 
   void setMissedRestReminderEnabled(bool value) {
     _update((settings) => settings.copyWith(missedRestReminderEnabled: value));
+  }
+
+  void setMissedWorkReminderEnabled(bool value) {
+    _update((settings) => settings.copyWith(missedWorkReminderEnabled: value));
   }
 
   void setPauseWhenLocked(bool value) {

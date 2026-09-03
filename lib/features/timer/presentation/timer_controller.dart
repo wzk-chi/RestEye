@@ -222,8 +222,6 @@ final class TimerController extends Notifier<TimerViewState> {
           commandId: dispatcher.createId('complete-rest'),
           occurredAtUtc: ref.read(appClockProvider).utcNow,
           expectedCycleId: snapshot.cycleId,
-          expectedPhase: TimerPhase.resting,
-          expectedRevision: snapshot.revision,
           nextCycleId: dispatcher.createId('cycle'),
           nextCycleConfig: timerCycleConfigFromSettings(settings),
         ),

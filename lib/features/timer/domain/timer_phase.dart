@@ -1,3 +1,3 @@
-enum TimerPhase { idle, working, awaitingRest, resting }
+enum TimerPhase { idle, working, awaitingRest, resting, awaitingWork }
 
 enum ExecutionStatus { active, suspended }

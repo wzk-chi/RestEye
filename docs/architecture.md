@@ -2,7 +2,7 @@
 
 ## 1. 项目目的与文档优先级
 
-RestEye 是一个本地优先的 20-20-20 护眼提醒工具：默认工作 20 分钟、休息 20 秒，支持自定义工作/休息时长、未休息重复提醒、超时处理、系统通知动作、锁屏暂停，以及工作时长、休息时长和次数统计。目标平台是 Android、Windows 和 macOS；三端共享 Flutter 业务代码、状态规则和 Material 3 界面，系统通知、屏幕状态和生命周期通过原生适配层接入。
+RestEye 是一个本地优先的 20-20-20 护眼提醒工具：默认工作 20 分钟、休息 20 秒，支持自定义工作/休息时长、未休息与未工作重复提醒、双向超时处理、系统通知动作、锁屏暂停，以及工作时长、休息时长和次数统计。目标平台是 Android、Windows 和 macOS；三端共享 Flutter 业务代码、状态规则和 Material 3 界面，系统通知、屏幕状态和生命周期通过原生适配层接入。
 
 本项目没有账号、网络同步或云端数据，用户数据默认只保存在本机 SQLite。产品行为以 `docs/requirements.md` 为准；代码组织、依赖方向和实现约束以本文档为准；根目录 `AGENTS.md` 是给贡献者和后续 AI 的快速执行摘要。开始修改前必须先阅读 `AGENTS.md`、本文档和需求文档。
 
@@ -95,7 +95,7 @@ UI 按钮、通知动作、锁屏暂停和恢复流程都必须复用同一命�
 
 ### 5.5 Data 与 Infrastructure
 
-feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model 与 Drift row 之间转换；`infrastructure/database/` 只负责数据库、表和迁移。当前 schema version 为 12，`screen_activity_state` 保存尚未关闭的亮屏区间，`app_settings_table.pause_when_locked` 保存锁屏暂停偏好，`fixed_portrait_enabled` 保存 Android 固定竖屏偏好，`minimize_to_tray_on_close` 保存 Windows 关闭行为偏好，`work_reminder_enabled`、`rest_reminder_enabled` 和 `missed_rest_reminder_enabled` 保存三类通知开关（默认均为 `true`），`rest_completion_behavior` 保存休息自然结束后的处理方式，`timer_snapshots_table.last_heartbeat_at_utc` 保存主进程最后确认存活的时间。`activity_events_table.local_date_key`、`occurred_at_utc` 和 pending command 的终态/时间列有索引，以支持统计查询和恢复扫描。v6 将旧列名平滑迁移为新语义，v7 为既有设置补充托盘偏好，v8 移除已废弃的自动模式字段，v9 为既有设置补充三类通知开关，v10 增加查询索引，v11 增加休息完成处理设置，v12 增加进程心跳，不清除其他已有设置。计时快照、关键事件和 inbox command 的状态变更必须使用事务；恢复事件通过 Drift batch 写入，终态 inbox command 保留 30 天后清理，未处理命令恢复扫描最多读取 10,000 条；持久化失败不得发布未提交的内存状态。数据库升级必须增加显式 migration，禁止删除用户数据或通过重建数据库“修复”坏数据。
+feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model 与 Drift row 之间转换；`infrastructure/database/` 只负责数据库、表和迁移。当前 schema version 为 13，`screen_activity_state` 保存尚未关闭的亮屏区间，`app_settings_table.pause_when_locked` 保存锁屏暂停偏好，`fixed_portrait_enabled` 保存 Android 固定竖屏偏好，`minimize_to_tray_on_close` 保存 Windows 关闭行为偏好，四类通知开关默认均为 `true`，`rest_completion_behavior` 保存休息自然结束后的处理方式，新增字段保存未工作提醒间隔、休息超时时间和休息超时后处理，`timer_snapshots_table.last_heartbeat_at_utc` 保存主进程最后确认存活的时间。`activity_events_table.local_date_key`、`occurred_at_utc` 和 pending command 的终态/时间列有索引，以支持统计查询和恢复扫描。v6 将旧列名平滑迁移为新语义，v7 为既有设置补充托盘偏好，v8 移除已废弃的自动模式字段，v9 为既有设置补充三类通知开关，v10 增加查询索引，v11 增加休息完成处理设置，v12 增加进程心跳，v13 增加休息超时配置和未工作重复提醒，不清除其他已有设置。计时快照、关键事件和 inbox command 的状态变更必须使用事务；恢复事件通过 Drift batch 写入，终态 inbox command 保留 30 天后清理，未处理命令恢复扫描最多读取 10,000 条；持久化失败不得发布未提交的内存状态。数据库升级必须增加显式 migration，禁止删除用户数据或通过重建数据库“修复”坏数据。
 
 ### 5.6 Presentation
 
@@ -111,18 +111,19 @@ feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model
 | `working` | 工作计时，首页显示已工作时长 |
 | `awaitingRest` | 工作完成，等待用户开始或跳过休息，重复提醒在此阶段发生 |
 | `resting` | 用户已开始休息的计时，首页显示已休息时长 |
+| `awaitingWork` | 计划休息时间已用完，继续累计休息并等待用户开始工作，未工作重复提醒在此阶段发生 |
 
-`executionStatus` 与 phase 正交，当前为 `active`/`suspended`。开启 `pauseWhenLocked` 后，只有 `working` 会因锁屏变为 `suspended`；解锁/恢复后继续同一 `cycleId`，不重新创建轮次；`awaitingRest` 和 `resting` 不因锁屏改变。若未来需要区分手动暂停、系统挂起等原因，应增加 suspension reason，不复制 phase。
+`executionStatus` 与 phase 正交，当前为 `active`/`suspended`。开启 `pauseWhenLocked` 后，只有 `working` 会因锁屏变为 `suspended`；解锁/恢复后继续同一 `cycleId`，不重新创建轮次；`awaitingRest`、`resting` 和 `awaitingWork` 不因锁屏改变。若未来需要区分手动暂停、系统挂起等原因，应增加 suspension reason，不复制 phase。
 
-工作达到设定时长后进入 `awaitingRest` 并发出工作完成通知：主进度固定为 100%，显示的“已工作”时长继续累加，等待期间视为超时工作。开始休息、跳过休息、停止计时或等待超时结束该阶段时，必须将超时工作追加为 `workCompleted` 事件，因而计入工作统计；完整休息完成后按当前轮 `restCompletionBehavior` 处理：`startWork` 进入下一轮工作，`stopTimer` 回到 `idle`，`continueRest` 保持 `resting` 并继续累计休息时长。休息中的“开始工作”操作结束当前休息并进入下一轮工作；达到配置休息时长后才计为完整休息。用户跳过休息或等待超时均不计为完整休息。超时行为由当前轮配置快照决定：`nextCycle` 为默认值，进入下一轮；`stopTimer` 回到 `idle`。设置保存只影响下一轮，当前轮不得被悄悄改写。
+工作达到设定时长后进入 `awaitingRest` 并发出休息提醒：主进度固定为 100%，显示的“已工作”时长继续累加，等待期间视为超时工作。开始休息、跳过休息、停止计时或等待超时结束该阶段时，必须将超时工作追加为 `workCompleted` 事件。休息达到设定时长时必须发出工作提醒，并按当前轮 `restCompletionBehavior` 处理：`startWork` 进入下一轮工作，`stopTimer` 回到 `idle`，`continueRest` 进入 `awaitingWork`。`awaitingWork` 主进度保持 100%，显示的“已休息”时长继续累加，按 `missedWorkReminderInterval` 重复提醒；达到 `restTimeout` 后按 `restTimeoutBehavior` 进入下一轮或结束计时。休息中的“开始工作”操作结束当前休息并进入下一轮，计划休息及超时休息均计入休息统计。超时行为由当前轮配置快照决定，设置保存只影响下一轮。
 
-所有持久化 deadline 使用 UTC 的 `startedAtUtc`、`deadlineAtUtc` 和 `nextReminderAtUtc`。进程存活时首页正计时和进度使用单调 elapsed，UI 刷新不是计时来源；工作阶段显示已工作时长，休息阶段显示已休息时长，等待休息阶段继续显示累计已工作时长。应用启动或恢复时必须依据当前 UTC 做 reconciliation。屏幕状态为 `unknown` 时只能发布能力降级，绝不能当作 `off`，也不能关闭亮屏统计区间或改变计时状态。
+所有持久化 deadline 使用 UTC 的 `startedAtUtc`、`deadlineAtUtc` 和 `nextReminderAtUtc`。进程存活时首页正计时和进度使用单调 elapsed，UI 刷新不是计时来源；工作与等待休息阶段显示累计已工作时长，休息与等待工作阶段显示累计已休息时长。应用启动或恢复时必须依据当前 UTC 做 reconciliation；发现上一进程遗留的活动计时时，以最后心跳作为截止点，不能把离线时间计入工作或休息。屏幕状态为 `unknown` 时只能发布能力降级，绝不能当作 `off`，也不能关闭亮屏统计区间或改变计时状态。
 
 ## 7. 持久化与统计口径
 
 当前核心表为：
 
-- `app_settings_table`：单行用户设置、语言、主题、三类通知开关、锁屏暂停、固定竖屏、震动开关、超时行为和休息完成处理。
+- `app_settings_table`：单行用户设置、语言、主题、四类通知开关、锁屏暂停、固定竖屏、震动开关、工作/休息双向超时行为和休息完成处理。
 - `timer_snapshots_table`：单行当前计时快照、revision、cycle、phase、时间点和当前轮配置。
 - `pending_commands_table`：通知等外部动作的 inbox，按 `commandId` 去重，恢复后可重放。
 - `activity_events_table`：追加式工作/休息/提醒/跳过/超时/屏幕区间事件。
@@ -144,13 +145,13 @@ feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model
 
 三端屏幕状态使用统一通道：`dev.resteye/screen_state` 与 `dev.resteye/screen_state/events`。在计时语义中，`off` 表示设备已锁定、不可交互，不表示显示器单独熄灭。Android 使用 `KeyguardManager.isKeyguardLocked` 读取锁屏状态，并监听 `ACTION_SCREEN_ON`、`ACTION_SCREEN_OFF` 和 `ACTION_USER_PRESENT`；`ACTION_USER_PRESENT` 表示用户完成解锁，不能只用 `PowerManager.isInteractive` 推断锁屏。Windows 使用 `WTSRegisterSessionNotification` 与 `WM_WTSSESSION_CHANGE` 的 `WTS_SESSION_LOCK`/`WTS_SESSION_UNLOCK`，并以 `Winlogon` 输入桌面轮询作为兜底；WTS 锁屏/解锁事件是权威信号，锁屏期间轮询不得将过渡中的输入桌面误判为解锁；macOS 使用 `DistributedNotificationCenter` 的 `com.apple.screenIsLocked`/`com.apple.screenIsUnlocked`，并用 `CGSessionCopyCurrentDictionary` 读取启动和监听建立时状态。显示器单独休眠不会触发锁屏暂停。原生实现必须清理 receiver、observer、event sink 和 method handler。
 
-通知必须由已提交快照和设置推导为期望集合，并由 reconciler 幂等同步。`restReminderEnabled` 控制工作结束后发出的休息提醒，`missedRestReminderEnabled` 控制 `awaitingRest` 阶段按当前轮 `reminderInterval` 发送的重复提醒，`workReminderEnabled` 控制休息完成后发出的工作提醒；关闭任一开关都必须取消对应的待发通知，未休息重复提醒不另设间隔。通知 ID 使用 `cycleId + effectType + occurrence` 的确定性哈希；Android 通知包含“开始休息”和“跳过”动作，并根据设置选择震动/静默 channel。Android 声明 `SCHEDULE_EXACT_ALARM`；有精确闹钟权限时使用 `exactAllowWhileIdle`，否则安全降级为 `inexactAllowWhileIdle`，不能因精确权限缺失而阻断提醒。Windows 使用系统通知能力并明确请求系统默认提示音。Windows Toast XML 固定按 `visual → audio → actions` 顺序生成，避免系统显示通知但忽略声音；macOS 使用各自系统通知能力。Windows runner 使用 `Shell_NotifyIconW` 注册原生托盘图标，macOS 使用 `NSStatusItem` 注册菜单栏图标；两端均提供本地化“打开”和“退出”，且不在这两个菜单标题中重复应用名称。关闭行为开启时窗口只隐藏，打开恢复窗口，退出允许真正结束进程。Dart 通过 `dev.resteye/window_behavior` 的 `setTrayMenu` 一次性提交 tooltip、打开/退出文案和当前计时菜单项；原生端只显示列表，并通过 `dev.resteye/window_behavior/events` 回传稳定 action id。回传动作必须重新进入 `TimerController`/`TimerCommandDispatcher`，不能在 Swift/C++ 中直接修改计时状态。通知声音最终仍受操作系统的应用通知声音、系统音量和专注助手策略控制。通知、权限或屏幕状态不可用时进入明确的 degraded 状态，不能阻断计时或静默修改用户数据。
+通知必须由已提交快照和设置推导为期望集合，并由 reconciler 幂等同步。`restReminderEnabled` 控制工作时间用完时发出的休息提醒，`missedRestReminderEnabled` 控制 `awaitingRest` 的重复提醒；`workReminderEnabled` 控制休息时间用完时发出的工作提醒，`missedWorkReminderEnabled` 控制 `awaitingWork` 的重复提醒。关闭任一开关都必须取消对应的待发通知。通知 ID 使用 `cycleId + effectType + occurrence` 的确定性哈希；Android 休息提醒包含“开始休息”和“跳过”动作，并根据设置选择震动/静默 channel。Android 声明 `SCHEDULE_EXACT_ALARM`；有精确闹钟权限时使用 `exactAllowWhileIdle`，否则安全降级为 `inexactAllowWhileIdle`，不能因精确权限缺失而阻断提醒。Windows 使用系统通知能力并明确请求系统默认提示音。Windows Toast XML 固定按 `visual → audio → actions` 顺序生成，避免系统显示通知但忽略声音；macOS 使用各自系统通知能力。Windows runner 使用 `Shell_NotifyIconW` 注册原生托盘图标，macOS 使用 `NSStatusItem` 注册菜单栏图标；两端均提供本地化“打开”和“退出”，且不在这两个菜单标题中重复应用名称。关闭行为开启时窗口只隐藏，打开恢复窗口，退出允许真正结束进程。Dart 通过 `dev.resteye/window_behavior` 的 `setTrayMenu` 一次性提交 tooltip、打开/退出文案和当前计时菜单项；原生端只显示列表，并通过 `dev.resteye/window_behavior/events` 回传稳定 action id。回传动作必须重新进入 `TimerController`/`TimerCommandDispatcher`，不能在 Swift/C++ 中直接修改计时状态。通知声音最终仍受操作系统的应用通知声音、系统音量和专注助手策略控制。通知、权限或屏幕状态不可用时进入明确的 degraded 状态，不能阻断计时或静默修改用户数据。
 
 通知实现补充：通知 ID 使用 `cycleId + effectType + absolute scheduledAtUtc` 的确定性哈希，使连续对账只处理新增或到期项目；震动/语言设置变化会强制重写现有计划。通知 gateway 接收 reconciler 已加载的设置，批次内复用本地化文案和 Android 调度模式，避免每条通知重复查询。到达截止点时，若 Android 定时通知仍处于 pending 状态，不得在对账器中取消并立即重排程，以避免与 `ScheduledNotificationReceiver` 竞态；仅当 pending 和活动通知均不存在时，才执行到期通知补发。Android 定时提醒使用普通通知样式：不设置 `timeoutAfter`，不因点击自动清除，允许用户手动划掉；顶部 heads-up 浮层按系统策略消退，但通知栏中的提醒应保留到用户处理或业务状态使其过期。点击通知正文可以打开 RestEye；“开始休息”和“跳过休息”按钮必须在后台 isolate 中通过共享 Drift 数据库重新进入 inbox、dispatcher 和 reducer 管线，不得拉起界面。主 isolate 恢复时需要重新读取持久化快照，以接收后台动作已经提交的状态。
 
 ## 9. 本地化、主题与跨平台 UI
 
-设置页的卡片顺序固定为“外观 → 通知 → 计时 → 关于”：不显示分类标题或分类图标，设置项不使用装饰性左侧图标，所有卡片保持统一的内容起始线和控件对齐；工作提醒、休息提醒、未休息重复提醒和其联动的未休息提醒间隔位于通知卡片，三类开关在 Android、Windows、macOS 均显示；锁屏暂停位于计时卡片且默认关闭，关于只作为最后的二级入口；未休息超时时间与超时后处理也属于计时卡片。Android 外观设置提供默认开启的固定竖屏开关，Windows 外观设置提供默认开启的“关闭时最小化到托盘”开关。统计页默认选择今天，并通过 Material 单日期选择器切换日期；摘要与时间轴拆为两张卡片：摘要使用工作、休息和完成休息三个 Material 语义图标，不使用左侧竖杠；单日时间轴卡片只保留图例和可视化，不添加标题。不将亮屏时长作为独立用户指标。工作使用蓝色、休息使用高对比度暖橙色，浅色和深色主题都必须可区分。使用 Material 组件组合（如 `Row`、`Stack`、`Card`），不得使用 `CustomPainter` 或手动画布。
+设置页的卡片顺序固定为“外观 → 通知 → 计时 → 关于”：不显示分类标题或分类图标，设置项不使用装饰性左侧图标，所有卡片保持统一的内容起始线和控件对齐；工作提醒、休息提醒、未休息/未工作重复提醒及各自间隔位于通知卡片，四类开关在 Android、Windows、macOS 均显示；锁屏暂停位于计时卡片且默认关闭，关于只作为最后的二级入口；未休息与休息超时时间及各自超时后处理也属于计时卡片。Android 外观设置提供默认开启的固定竖屏开关，Windows 外观设置提供默认开启的“关闭时最小化到托盘”开关。统计页默认选择今天，并通过 Material 单日期选择器切换日期；摘要与时间轴拆为两张卡片：摘要使用工作、休息和完成休息三个 Material 语义图标，不使用左侧竖杠；单日时间轴卡片只保留图例和可视化，不添加标题。不将亮屏时长作为独立用户指标。工作使用蓝色、休息使用高对比度暖橙色，浅色和深色主题都必须可区分。使用 Material 组件组合（如 `Row`、`Stack`、`Card`），不得使用 `CustomPainter` 或手动画布。
 
 所有用户可见文字、错误、无障碍语义、通知标题/正文、通知动作和原生显示名称都必须本地化。ARB 源文件位于 `lib/l10n/arb/`，`app_zh.arb` 提供中文，`app_en.arb` 提供英文回退；生成文件位于 `lib/l10n/generated/`，禁止手动编辑。语言偏好使用稳定枚举 `system`、`zh`、`en`，默认 `system`；跟随系统时 UI 保持 `MaterialApp.locale == null` 以响应系统语言变化，通知在调度时把当前系统 locale 解析为受支持语言。domain/database 只保存 locale code、枚举和数值，不保存翻译后的句子；切换语言后应重排尚未触发的通知。
 

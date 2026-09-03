@@ -62,6 +62,30 @@ class $AppSettingsTableTable extends AppSettingsTable
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _missedWorkReminderIntervalMsMeta =
+      const VerificationMeta('missedWorkReminderIntervalMs');
+  @override
+  late final GeneratedColumn<int> missedWorkReminderIntervalMs =
+      GeneratedColumn<int>(
+        'missed_work_reminder_interval_ms',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(180000),
+      );
+  static const VerificationMeta _restTimeoutMsMeta = const VerificationMeta(
+    'restTimeoutMs',
+  );
+  @override
+  late final GeneratedColumn<int> restTimeoutMs = GeneratedColumn<int>(
+    'rest_timeout_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(600000),
+  );
   static const VerificationMeta _androidVibrationEnabledMeta =
       const VerificationMeta('androidVibrationEnabled');
   @override
@@ -116,6 +140,21 @@ class $AppSettingsTableTable extends AppSettingsTable
         requiredDuringInsert: false,
         defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("missed_rest_reminder_enabled" IN (0, 1))',
+        ),
+        defaultValue: const Constant(true),
+      );
+  static const VerificationMeta _missedWorkReminderEnabledMeta =
+      const VerificationMeta('missedWorkReminderEnabled');
+  @override
+  late final GeneratedColumn<bool> missedWorkReminderEnabled =
+      GeneratedColumn<bool>(
+        'missed_work_reminder_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("missed_work_reminder_enabled" IN (0, 1))',
         ),
         defaultValue: const Constant(true),
       );
@@ -197,6 +236,18 @@ class $AppSettingsTableTable extends AppSettingsTable
     requiredDuringInsert: false,
     defaultValue: const Constant('nextCycle'),
   );
+  static const VerificationMeta _restTimeoutBehaviorMeta =
+      const VerificationMeta('restTimeoutBehavior');
+  @override
+  late final GeneratedColumn<String> restTimeoutBehavior =
+      GeneratedColumn<String>(
+        'rest_timeout_behavior',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('nextCycle'),
+      );
   static const VerificationMeta _restCompletionBehaviorMeta =
       const VerificationMeta('restCompletionBehavior');
   @override
@@ -216,16 +267,20 @@ class $AppSettingsTableTable extends AppSettingsTable
     restDurationMs,
     reminderIntervalMs,
     reminderTimeoutMs,
+    missedWorkReminderIntervalMs,
+    restTimeoutMs,
     androidVibrationEnabled,
     workReminderEnabled,
     restReminderEnabled,
     missedRestReminderEnabled,
+    missedWorkReminderEnabled,
     localeCode,
     themeModeCode,
     pauseWhenLocked,
     fixedPortraitEnabled,
     minimizeToTrayOnClose,
     timeoutBehavior,
+    restTimeoutBehavior,
     restCompletionBehavior,
   ];
   @override
@@ -287,6 +342,24 @@ class $AppSettingsTableTable extends AppSettingsTable
     } else if (isInserting) {
       context.missing(_reminderTimeoutMsMeta);
     }
+    if (data.containsKey('missed_work_reminder_interval_ms')) {
+      context.handle(
+        _missedWorkReminderIntervalMsMeta,
+        missedWorkReminderIntervalMs.isAcceptableOrUnknown(
+          data['missed_work_reminder_interval_ms']!,
+          _missedWorkReminderIntervalMsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('rest_timeout_ms')) {
+      context.handle(
+        _restTimeoutMsMeta,
+        restTimeoutMs.isAcceptableOrUnknown(
+          data['rest_timeout_ms']!,
+          _restTimeoutMsMeta,
+        ),
+      );
+    }
     if (data.containsKey('android_vibration_enabled')) {
       context.handle(
         _androidVibrationEnabledMeta,
@@ -322,6 +395,15 @@ class $AppSettingsTableTable extends AppSettingsTable
         missedRestReminderEnabled.isAcceptableOrUnknown(
           data['missed_rest_reminder_enabled']!,
           _missedRestReminderEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('missed_work_reminder_enabled')) {
+      context.handle(
+        _missedWorkReminderEnabledMeta,
+        missedWorkReminderEnabled.isAcceptableOrUnknown(
+          data['missed_work_reminder_enabled']!,
+          _missedWorkReminderEnabledMeta,
         ),
       );
     }
@@ -380,6 +462,15 @@ class $AppSettingsTableTable extends AppSettingsTable
         ),
       );
     }
+    if (data.containsKey('rest_timeout_behavior')) {
+      context.handle(
+        _restTimeoutBehaviorMeta,
+        restTimeoutBehavior.isAcceptableOrUnknown(
+          data['rest_timeout_behavior']!,
+          _restTimeoutBehaviorMeta,
+        ),
+      );
+    }
     if (data.containsKey('rest_completion_behavior')) {
       context.handle(
         _restCompletionBehaviorMeta,
@@ -418,6 +509,14 @@ class $AppSettingsTableTable extends AppSettingsTable
         DriftSqlType.int,
         data['${effectivePrefix}reminder_timeout_ms'],
       )!,
+      missedWorkReminderIntervalMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}missed_work_reminder_interval_ms'],
+      )!,
+      restTimeoutMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rest_timeout_ms'],
+      )!,
       androidVibrationEnabled: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}android_vibration_enabled'],
@@ -433,6 +532,10 @@ class $AppSettingsTableTable extends AppSettingsTable
       missedRestReminderEnabled: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}missed_rest_reminder_enabled'],
+      )!,
+      missedWorkReminderEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}missed_work_reminder_enabled'],
       )!,
       localeCode: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -458,6 +561,10 @@ class $AppSettingsTableTable extends AppSettingsTable
         DriftSqlType.string,
         data['${effectivePrefix}timeout_behavior'],
       )!,
+      restTimeoutBehavior: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rest_timeout_behavior'],
+      )!,
       restCompletionBehavior: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}rest_completion_behavior'],
@@ -477,16 +584,20 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
   final int restDurationMs;
   final int reminderIntervalMs;
   final int reminderTimeoutMs;
+  final int missedWorkReminderIntervalMs;
+  final int restTimeoutMs;
   final bool androidVibrationEnabled;
   final bool workReminderEnabled;
   final bool restReminderEnabled;
   final bool missedRestReminderEnabled;
+  final bool missedWorkReminderEnabled;
   final String localeCode;
   final String themeModeCode;
   final bool pauseWhenLocked;
   final bool fixedPortraitEnabled;
   final bool minimizeToTrayOnClose;
   final String timeoutBehavior;
+  final String restTimeoutBehavior;
   final String restCompletionBehavior;
   const AppSettingsRow({
     required this.id,
@@ -494,16 +605,20 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     required this.restDurationMs,
     required this.reminderIntervalMs,
     required this.reminderTimeoutMs,
+    required this.missedWorkReminderIntervalMs,
+    required this.restTimeoutMs,
     required this.androidVibrationEnabled,
     required this.workReminderEnabled,
     required this.restReminderEnabled,
     required this.missedRestReminderEnabled,
+    required this.missedWorkReminderEnabled,
     required this.localeCode,
     required this.themeModeCode,
     required this.pauseWhenLocked,
     required this.fixedPortraitEnabled,
     required this.minimizeToTrayOnClose,
     required this.timeoutBehavior,
+    required this.restTimeoutBehavior,
     required this.restCompletionBehavior,
   });
   @override
@@ -514,11 +629,18 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     map['rest_duration_ms'] = Variable<int>(restDurationMs);
     map['reminder_interval_ms'] = Variable<int>(reminderIntervalMs);
     map['reminder_timeout_ms'] = Variable<int>(reminderTimeoutMs);
+    map['missed_work_reminder_interval_ms'] = Variable<int>(
+      missedWorkReminderIntervalMs,
+    );
+    map['rest_timeout_ms'] = Variable<int>(restTimeoutMs);
     map['android_vibration_enabled'] = Variable<bool>(androidVibrationEnabled);
     map['work_reminder_enabled'] = Variable<bool>(workReminderEnabled);
     map['rest_reminder_enabled'] = Variable<bool>(restReminderEnabled);
     map['missed_rest_reminder_enabled'] = Variable<bool>(
       missedRestReminderEnabled,
+    );
+    map['missed_work_reminder_enabled'] = Variable<bool>(
+      missedWorkReminderEnabled,
     );
     map['locale_code'] = Variable<String>(localeCode);
     map['theme_mode_code'] = Variable<String>(themeModeCode);
@@ -526,6 +648,7 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     map['fixed_portrait_enabled'] = Variable<bool>(fixedPortraitEnabled);
     map['minimize_to_tray_on_close'] = Variable<bool>(minimizeToTrayOnClose);
     map['timeout_behavior'] = Variable<String>(timeoutBehavior);
+    map['rest_timeout_behavior'] = Variable<String>(restTimeoutBehavior);
     map['rest_completion_behavior'] = Variable<String>(restCompletionBehavior);
     return map;
   }
@@ -537,16 +660,20 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       restDurationMs: Value(restDurationMs),
       reminderIntervalMs: Value(reminderIntervalMs),
       reminderTimeoutMs: Value(reminderTimeoutMs),
+      missedWorkReminderIntervalMs: Value(missedWorkReminderIntervalMs),
+      restTimeoutMs: Value(restTimeoutMs),
       androidVibrationEnabled: Value(androidVibrationEnabled),
       workReminderEnabled: Value(workReminderEnabled),
       restReminderEnabled: Value(restReminderEnabled),
       missedRestReminderEnabled: Value(missedRestReminderEnabled),
+      missedWorkReminderEnabled: Value(missedWorkReminderEnabled),
       localeCode: Value(localeCode),
       themeModeCode: Value(themeModeCode),
       pauseWhenLocked: Value(pauseWhenLocked),
       fixedPortraitEnabled: Value(fixedPortraitEnabled),
       minimizeToTrayOnClose: Value(minimizeToTrayOnClose),
       timeoutBehavior: Value(timeoutBehavior),
+      restTimeoutBehavior: Value(restTimeoutBehavior),
       restCompletionBehavior: Value(restCompletionBehavior),
     );
   }
@@ -562,6 +689,10 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       restDurationMs: serializer.fromJson<int>(json['restDurationMs']),
       reminderIntervalMs: serializer.fromJson<int>(json['reminderIntervalMs']),
       reminderTimeoutMs: serializer.fromJson<int>(json['reminderTimeoutMs']),
+      missedWorkReminderIntervalMs: serializer.fromJson<int>(
+        json['missedWorkReminderIntervalMs'],
+      ),
+      restTimeoutMs: serializer.fromJson<int>(json['restTimeoutMs']),
       androidVibrationEnabled: serializer.fromJson<bool>(
         json['androidVibrationEnabled'],
       ),
@@ -574,6 +705,9 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       missedRestReminderEnabled: serializer.fromJson<bool>(
         json['missedRestReminderEnabled'],
       ),
+      missedWorkReminderEnabled: serializer.fromJson<bool>(
+        json['missedWorkReminderEnabled'],
+      ),
       localeCode: serializer.fromJson<String>(json['localeCode']),
       themeModeCode: serializer.fromJson<String>(json['themeModeCode']),
       pauseWhenLocked: serializer.fromJson<bool>(json['pauseWhenLocked']),
@@ -584,6 +718,9 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
         json['minimizeToTrayOnClose'],
       ),
       timeoutBehavior: serializer.fromJson<String>(json['timeoutBehavior']),
+      restTimeoutBehavior: serializer.fromJson<String>(
+        json['restTimeoutBehavior'],
+      ),
       restCompletionBehavior: serializer.fromJson<String>(
         json['restCompletionBehavior'],
       ),
@@ -598,6 +735,10 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       'restDurationMs': serializer.toJson<int>(restDurationMs),
       'reminderIntervalMs': serializer.toJson<int>(reminderIntervalMs),
       'reminderTimeoutMs': serializer.toJson<int>(reminderTimeoutMs),
+      'missedWorkReminderIntervalMs': serializer.toJson<int>(
+        missedWorkReminderIntervalMs,
+      ),
+      'restTimeoutMs': serializer.toJson<int>(restTimeoutMs),
       'androidVibrationEnabled': serializer.toJson<bool>(
         androidVibrationEnabled,
       ),
@@ -606,12 +747,16 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       'missedRestReminderEnabled': serializer.toJson<bool>(
         missedRestReminderEnabled,
       ),
+      'missedWorkReminderEnabled': serializer.toJson<bool>(
+        missedWorkReminderEnabled,
+      ),
       'localeCode': serializer.toJson<String>(localeCode),
       'themeModeCode': serializer.toJson<String>(themeModeCode),
       'pauseWhenLocked': serializer.toJson<bool>(pauseWhenLocked),
       'fixedPortraitEnabled': serializer.toJson<bool>(fixedPortraitEnabled),
       'minimizeToTrayOnClose': serializer.toJson<bool>(minimizeToTrayOnClose),
       'timeoutBehavior': serializer.toJson<String>(timeoutBehavior),
+      'restTimeoutBehavior': serializer.toJson<String>(restTimeoutBehavior),
       'restCompletionBehavior': serializer.toJson<String>(
         restCompletionBehavior,
       ),
@@ -624,16 +769,20 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     int? restDurationMs,
     int? reminderIntervalMs,
     int? reminderTimeoutMs,
+    int? missedWorkReminderIntervalMs,
+    int? restTimeoutMs,
     bool? androidVibrationEnabled,
     bool? workReminderEnabled,
     bool? restReminderEnabled,
     bool? missedRestReminderEnabled,
+    bool? missedWorkReminderEnabled,
     String? localeCode,
     String? themeModeCode,
     bool? pauseWhenLocked,
     bool? fixedPortraitEnabled,
     bool? minimizeToTrayOnClose,
     String? timeoutBehavior,
+    String? restTimeoutBehavior,
     String? restCompletionBehavior,
   }) => AppSettingsRow(
     id: id ?? this.id,
@@ -641,18 +790,24 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     restDurationMs: restDurationMs ?? this.restDurationMs,
     reminderIntervalMs: reminderIntervalMs ?? this.reminderIntervalMs,
     reminderTimeoutMs: reminderTimeoutMs ?? this.reminderTimeoutMs,
+    missedWorkReminderIntervalMs:
+        missedWorkReminderIntervalMs ?? this.missedWorkReminderIntervalMs,
+    restTimeoutMs: restTimeoutMs ?? this.restTimeoutMs,
     androidVibrationEnabled:
         androidVibrationEnabled ?? this.androidVibrationEnabled,
     workReminderEnabled: workReminderEnabled ?? this.workReminderEnabled,
     restReminderEnabled: restReminderEnabled ?? this.restReminderEnabled,
     missedRestReminderEnabled:
         missedRestReminderEnabled ?? this.missedRestReminderEnabled,
+    missedWorkReminderEnabled:
+        missedWorkReminderEnabled ?? this.missedWorkReminderEnabled,
     localeCode: localeCode ?? this.localeCode,
     themeModeCode: themeModeCode ?? this.themeModeCode,
     pauseWhenLocked: pauseWhenLocked ?? this.pauseWhenLocked,
     fixedPortraitEnabled: fixedPortraitEnabled ?? this.fixedPortraitEnabled,
     minimizeToTrayOnClose: minimizeToTrayOnClose ?? this.minimizeToTrayOnClose,
     timeoutBehavior: timeoutBehavior ?? this.timeoutBehavior,
+    restTimeoutBehavior: restTimeoutBehavior ?? this.restTimeoutBehavior,
     restCompletionBehavior:
         restCompletionBehavior ?? this.restCompletionBehavior,
   );
@@ -671,6 +826,12 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       reminderTimeoutMs: data.reminderTimeoutMs.present
           ? data.reminderTimeoutMs.value
           : this.reminderTimeoutMs,
+      missedWorkReminderIntervalMs: data.missedWorkReminderIntervalMs.present
+          ? data.missedWorkReminderIntervalMs.value
+          : this.missedWorkReminderIntervalMs,
+      restTimeoutMs: data.restTimeoutMs.present
+          ? data.restTimeoutMs.value
+          : this.restTimeoutMs,
       androidVibrationEnabled: data.androidVibrationEnabled.present
           ? data.androidVibrationEnabled.value
           : this.androidVibrationEnabled,
@@ -683,6 +844,9 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       missedRestReminderEnabled: data.missedRestReminderEnabled.present
           ? data.missedRestReminderEnabled.value
           : this.missedRestReminderEnabled,
+      missedWorkReminderEnabled: data.missedWorkReminderEnabled.present
+          ? data.missedWorkReminderEnabled.value
+          : this.missedWorkReminderEnabled,
       localeCode: data.localeCode.present
           ? data.localeCode.value
           : this.localeCode,
@@ -701,6 +865,9 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
       timeoutBehavior: data.timeoutBehavior.present
           ? data.timeoutBehavior.value
           : this.timeoutBehavior,
+      restTimeoutBehavior: data.restTimeoutBehavior.present
+          ? data.restTimeoutBehavior.value
+          : this.restTimeoutBehavior,
       restCompletionBehavior: data.restCompletionBehavior.present
           ? data.restCompletionBehavior.value
           : this.restCompletionBehavior,
@@ -715,16 +882,22 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
           ..write('restDurationMs: $restDurationMs, ')
           ..write('reminderIntervalMs: $reminderIntervalMs, ')
           ..write('reminderTimeoutMs: $reminderTimeoutMs, ')
+          ..write(
+            'missedWorkReminderIntervalMs: $missedWorkReminderIntervalMs, ',
+          )
+          ..write('restTimeoutMs: $restTimeoutMs, ')
           ..write('androidVibrationEnabled: $androidVibrationEnabled, ')
           ..write('workReminderEnabled: $workReminderEnabled, ')
           ..write('restReminderEnabled: $restReminderEnabled, ')
           ..write('missedRestReminderEnabled: $missedRestReminderEnabled, ')
+          ..write('missedWorkReminderEnabled: $missedWorkReminderEnabled, ')
           ..write('localeCode: $localeCode, ')
           ..write('themeModeCode: $themeModeCode, ')
           ..write('pauseWhenLocked: $pauseWhenLocked, ')
           ..write('fixedPortraitEnabled: $fixedPortraitEnabled, ')
           ..write('minimizeToTrayOnClose: $minimizeToTrayOnClose, ')
           ..write('timeoutBehavior: $timeoutBehavior, ')
+          ..write('restTimeoutBehavior: $restTimeoutBehavior, ')
           ..write('restCompletionBehavior: $restCompletionBehavior')
           ..write(')'))
         .toString();
@@ -737,16 +910,20 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
     restDurationMs,
     reminderIntervalMs,
     reminderTimeoutMs,
+    missedWorkReminderIntervalMs,
+    restTimeoutMs,
     androidVibrationEnabled,
     workReminderEnabled,
     restReminderEnabled,
     missedRestReminderEnabled,
+    missedWorkReminderEnabled,
     localeCode,
     themeModeCode,
     pauseWhenLocked,
     fixedPortraitEnabled,
     minimizeToTrayOnClose,
     timeoutBehavior,
+    restTimeoutBehavior,
     restCompletionBehavior,
   );
   @override
@@ -758,16 +935,21 @@ class AppSettingsRow extends DataClass implements Insertable<AppSettingsRow> {
           other.restDurationMs == this.restDurationMs &&
           other.reminderIntervalMs == this.reminderIntervalMs &&
           other.reminderTimeoutMs == this.reminderTimeoutMs &&
+          other.missedWorkReminderIntervalMs ==
+              this.missedWorkReminderIntervalMs &&
+          other.restTimeoutMs == this.restTimeoutMs &&
           other.androidVibrationEnabled == this.androidVibrationEnabled &&
           other.workReminderEnabled == this.workReminderEnabled &&
           other.restReminderEnabled == this.restReminderEnabled &&
           other.missedRestReminderEnabled == this.missedRestReminderEnabled &&
+          other.missedWorkReminderEnabled == this.missedWorkReminderEnabled &&
           other.localeCode == this.localeCode &&
           other.themeModeCode == this.themeModeCode &&
           other.pauseWhenLocked == this.pauseWhenLocked &&
           other.fixedPortraitEnabled == this.fixedPortraitEnabled &&
           other.minimizeToTrayOnClose == this.minimizeToTrayOnClose &&
           other.timeoutBehavior == this.timeoutBehavior &&
+          other.restTimeoutBehavior == this.restTimeoutBehavior &&
           other.restCompletionBehavior == this.restCompletionBehavior);
 }
 
@@ -777,16 +959,20 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
   final Value<int> restDurationMs;
   final Value<int> reminderIntervalMs;
   final Value<int> reminderTimeoutMs;
+  final Value<int> missedWorkReminderIntervalMs;
+  final Value<int> restTimeoutMs;
   final Value<bool> androidVibrationEnabled;
   final Value<bool> workReminderEnabled;
   final Value<bool> restReminderEnabled;
   final Value<bool> missedRestReminderEnabled;
+  final Value<bool> missedWorkReminderEnabled;
   final Value<String> localeCode;
   final Value<String> themeModeCode;
   final Value<bool> pauseWhenLocked;
   final Value<bool> fixedPortraitEnabled;
   final Value<bool> minimizeToTrayOnClose;
   final Value<String> timeoutBehavior;
+  final Value<String> restTimeoutBehavior;
   final Value<String> restCompletionBehavior;
   const AppSettingsTableCompanion({
     this.id = const Value.absent(),
@@ -794,16 +980,20 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
     this.restDurationMs = const Value.absent(),
     this.reminderIntervalMs = const Value.absent(),
     this.reminderTimeoutMs = const Value.absent(),
+    this.missedWorkReminderIntervalMs = const Value.absent(),
+    this.restTimeoutMs = const Value.absent(),
     this.androidVibrationEnabled = const Value.absent(),
     this.workReminderEnabled = const Value.absent(),
     this.restReminderEnabled = const Value.absent(),
     this.missedRestReminderEnabled = const Value.absent(),
+    this.missedWorkReminderEnabled = const Value.absent(),
     this.localeCode = const Value.absent(),
     this.themeModeCode = const Value.absent(),
     this.pauseWhenLocked = const Value.absent(),
     this.fixedPortraitEnabled = const Value.absent(),
     this.minimizeToTrayOnClose = const Value.absent(),
     this.timeoutBehavior = const Value.absent(),
+    this.restTimeoutBehavior = const Value.absent(),
     this.restCompletionBehavior = const Value.absent(),
   });
   AppSettingsTableCompanion.insert({
@@ -812,16 +1002,20 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
     required int restDurationMs,
     required int reminderIntervalMs,
     required int reminderTimeoutMs,
+    this.missedWorkReminderIntervalMs = const Value.absent(),
+    this.restTimeoutMs = const Value.absent(),
     required bool androidVibrationEnabled,
     this.workReminderEnabled = const Value.absent(),
     this.restReminderEnabled = const Value.absent(),
     this.missedRestReminderEnabled = const Value.absent(),
+    this.missedWorkReminderEnabled = const Value.absent(),
     required String localeCode,
     required String themeModeCode,
     this.pauseWhenLocked = const Value.absent(),
     this.fixedPortraitEnabled = const Value.absent(),
     this.minimizeToTrayOnClose = const Value.absent(),
     this.timeoutBehavior = const Value.absent(),
+    this.restTimeoutBehavior = const Value.absent(),
     this.restCompletionBehavior = const Value.absent(),
   }) : workDurationMs = Value(workDurationMs),
        restDurationMs = Value(restDurationMs),
@@ -836,16 +1030,20 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
     Expression<int>? restDurationMs,
     Expression<int>? reminderIntervalMs,
     Expression<int>? reminderTimeoutMs,
+    Expression<int>? missedWorkReminderIntervalMs,
+    Expression<int>? restTimeoutMs,
     Expression<bool>? androidVibrationEnabled,
     Expression<bool>? workReminderEnabled,
     Expression<bool>? restReminderEnabled,
     Expression<bool>? missedRestReminderEnabled,
+    Expression<bool>? missedWorkReminderEnabled,
     Expression<String>? localeCode,
     Expression<String>? themeModeCode,
     Expression<bool>? pauseWhenLocked,
     Expression<bool>? fixedPortraitEnabled,
     Expression<bool>? minimizeToTrayOnClose,
     Expression<String>? timeoutBehavior,
+    Expression<String>? restTimeoutBehavior,
     Expression<String>? restCompletionBehavior,
   }) {
     return RawValuesInsertable({
@@ -855,6 +1053,9 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
       if (reminderIntervalMs != null)
         'reminder_interval_ms': reminderIntervalMs,
       if (reminderTimeoutMs != null) 'reminder_timeout_ms': reminderTimeoutMs,
+      if (missedWorkReminderIntervalMs != null)
+        'missed_work_reminder_interval_ms': missedWorkReminderIntervalMs,
+      if (restTimeoutMs != null) 'rest_timeout_ms': restTimeoutMs,
       if (androidVibrationEnabled != null)
         'android_vibration_enabled': androidVibrationEnabled,
       if (workReminderEnabled != null)
@@ -863,6 +1064,8 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
         'rest_reminder_enabled': restReminderEnabled,
       if (missedRestReminderEnabled != null)
         'missed_rest_reminder_enabled': missedRestReminderEnabled,
+      if (missedWorkReminderEnabled != null)
+        'missed_work_reminder_enabled': missedWorkReminderEnabled,
       if (localeCode != null) 'locale_code': localeCode,
       if (themeModeCode != null) 'theme_mode_code': themeModeCode,
       if (pauseWhenLocked != null) 'pause_when_locked': pauseWhenLocked,
@@ -871,6 +1074,8 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
       if (minimizeToTrayOnClose != null)
         'minimize_to_tray_on_close': minimizeToTrayOnClose,
       if (timeoutBehavior != null) 'timeout_behavior': timeoutBehavior,
+      if (restTimeoutBehavior != null)
+        'rest_timeout_behavior': restTimeoutBehavior,
       if (restCompletionBehavior != null)
         'rest_completion_behavior': restCompletionBehavior,
     });
@@ -882,16 +1087,20 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
     Value<int>? restDurationMs,
     Value<int>? reminderIntervalMs,
     Value<int>? reminderTimeoutMs,
+    Value<int>? missedWorkReminderIntervalMs,
+    Value<int>? restTimeoutMs,
     Value<bool>? androidVibrationEnabled,
     Value<bool>? workReminderEnabled,
     Value<bool>? restReminderEnabled,
     Value<bool>? missedRestReminderEnabled,
+    Value<bool>? missedWorkReminderEnabled,
     Value<String>? localeCode,
     Value<String>? themeModeCode,
     Value<bool>? pauseWhenLocked,
     Value<bool>? fixedPortraitEnabled,
     Value<bool>? minimizeToTrayOnClose,
     Value<String>? timeoutBehavior,
+    Value<String>? restTimeoutBehavior,
     Value<String>? restCompletionBehavior,
   }) {
     return AppSettingsTableCompanion(
@@ -900,12 +1109,17 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
       restDurationMs: restDurationMs ?? this.restDurationMs,
       reminderIntervalMs: reminderIntervalMs ?? this.reminderIntervalMs,
       reminderTimeoutMs: reminderTimeoutMs ?? this.reminderTimeoutMs,
+      missedWorkReminderIntervalMs:
+          missedWorkReminderIntervalMs ?? this.missedWorkReminderIntervalMs,
+      restTimeoutMs: restTimeoutMs ?? this.restTimeoutMs,
       androidVibrationEnabled:
           androidVibrationEnabled ?? this.androidVibrationEnabled,
       workReminderEnabled: workReminderEnabled ?? this.workReminderEnabled,
       restReminderEnabled: restReminderEnabled ?? this.restReminderEnabled,
       missedRestReminderEnabled:
           missedRestReminderEnabled ?? this.missedRestReminderEnabled,
+      missedWorkReminderEnabled:
+          missedWorkReminderEnabled ?? this.missedWorkReminderEnabled,
       localeCode: localeCode ?? this.localeCode,
       themeModeCode: themeModeCode ?? this.themeModeCode,
       pauseWhenLocked: pauseWhenLocked ?? this.pauseWhenLocked,
@@ -913,6 +1127,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
       minimizeToTrayOnClose:
           minimizeToTrayOnClose ?? this.minimizeToTrayOnClose,
       timeoutBehavior: timeoutBehavior ?? this.timeoutBehavior,
+      restTimeoutBehavior: restTimeoutBehavior ?? this.restTimeoutBehavior,
       restCompletionBehavior:
           restCompletionBehavior ?? this.restCompletionBehavior,
     );
@@ -936,6 +1151,14 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
     if (reminderTimeoutMs.present) {
       map['reminder_timeout_ms'] = Variable<int>(reminderTimeoutMs.value);
     }
+    if (missedWorkReminderIntervalMs.present) {
+      map['missed_work_reminder_interval_ms'] = Variable<int>(
+        missedWorkReminderIntervalMs.value,
+      );
+    }
+    if (restTimeoutMs.present) {
+      map['rest_timeout_ms'] = Variable<int>(restTimeoutMs.value);
+    }
     if (androidVibrationEnabled.present) {
       map['android_vibration_enabled'] = Variable<bool>(
         androidVibrationEnabled.value,
@@ -950,6 +1173,11 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
     if (missedRestReminderEnabled.present) {
       map['missed_rest_reminder_enabled'] = Variable<bool>(
         missedRestReminderEnabled.value,
+      );
+    }
+    if (missedWorkReminderEnabled.present) {
+      map['missed_work_reminder_enabled'] = Variable<bool>(
+        missedWorkReminderEnabled.value,
       );
     }
     if (localeCode.present) {
@@ -974,6 +1202,11 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
     if (timeoutBehavior.present) {
       map['timeout_behavior'] = Variable<String>(timeoutBehavior.value);
     }
+    if (restTimeoutBehavior.present) {
+      map['rest_timeout_behavior'] = Variable<String>(
+        restTimeoutBehavior.value,
+      );
+    }
     if (restCompletionBehavior.present) {
       map['rest_completion_behavior'] = Variable<String>(
         restCompletionBehavior.value,
@@ -990,16 +1223,22 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsRow> {
           ..write('restDurationMs: $restDurationMs, ')
           ..write('reminderIntervalMs: $reminderIntervalMs, ')
           ..write('reminderTimeoutMs: $reminderTimeoutMs, ')
+          ..write(
+            'missedWorkReminderIntervalMs: $missedWorkReminderIntervalMs, ',
+          )
+          ..write('restTimeoutMs: $restTimeoutMs, ')
           ..write('androidVibrationEnabled: $androidVibrationEnabled, ')
           ..write('workReminderEnabled: $workReminderEnabled, ')
           ..write('restReminderEnabled: $restReminderEnabled, ')
           ..write('missedRestReminderEnabled: $missedRestReminderEnabled, ')
+          ..write('missedWorkReminderEnabled: $missedWorkReminderEnabled, ')
           ..write('localeCode: $localeCode, ')
           ..write('themeModeCode: $themeModeCode, ')
           ..write('pauseWhenLocked: $pauseWhenLocked, ')
           ..write('fixedPortraitEnabled: $fixedPortraitEnabled, ')
           ..write('minimizeToTrayOnClose: $minimizeToTrayOnClose, ')
           ..write('timeoutBehavior: $timeoutBehavior, ')
+          ..write('restTimeoutBehavior: $restTimeoutBehavior, ')
           ..write('restCompletionBehavior: $restCompletionBehavior')
           ..write(')'))
         .toString();
@@ -1153,6 +1392,30 @@ class $TimerSnapshotsTableTable extends TimerSnapshotsTable
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _missedWorkReminderIntervalMsMeta =
+      const VerificationMeta('missedWorkReminderIntervalMs');
+  @override
+  late final GeneratedColumn<int> missedWorkReminderIntervalMs =
+      GeneratedColumn<int>(
+        'missed_work_reminder_interval_ms',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(180000),
+      );
+  static const VerificationMeta _restTimeoutMsMeta = const VerificationMeta(
+    'restTimeoutMs',
+  );
+  @override
+  late final GeneratedColumn<int> restTimeoutMs = GeneratedColumn<int>(
+    'rest_timeout_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(600000),
+  );
   static const VerificationMeta _timeoutBehaviorMeta = const VerificationMeta(
     'timeoutBehavior',
   );
@@ -1165,6 +1428,18 @@ class $TimerSnapshotsTableTable extends TimerSnapshotsTable
     requiredDuringInsert: false,
     defaultValue: const Constant('nextCycle'),
   );
+  static const VerificationMeta _restTimeoutBehaviorMeta =
+      const VerificationMeta('restTimeoutBehavior');
+  @override
+  late final GeneratedColumn<String> restTimeoutBehavior =
+      GeneratedColumn<String>(
+        'rest_timeout_behavior',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('nextCycle'),
+      );
   static const VerificationMeta _restCompletionBehaviorMeta =
       const VerificationMeta('restCompletionBehavior');
   @override
@@ -1192,7 +1467,10 @@ class $TimerSnapshotsTableTable extends TimerSnapshotsTable
     restDurationMs,
     reminderIntervalMs,
     reminderTimeoutMs,
+    missedWorkReminderIntervalMs,
+    restTimeoutMs,
     timeoutBehavior,
+    restTimeoutBehavior,
     restCompletionBehavior,
   ];
   @override
@@ -1327,12 +1605,39 @@ class $TimerSnapshotsTableTable extends TimerSnapshotsTable
     } else if (isInserting) {
       context.missing(_reminderTimeoutMsMeta);
     }
+    if (data.containsKey('missed_work_reminder_interval_ms')) {
+      context.handle(
+        _missedWorkReminderIntervalMsMeta,
+        missedWorkReminderIntervalMs.isAcceptableOrUnknown(
+          data['missed_work_reminder_interval_ms']!,
+          _missedWorkReminderIntervalMsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('rest_timeout_ms')) {
+      context.handle(
+        _restTimeoutMsMeta,
+        restTimeoutMs.isAcceptableOrUnknown(
+          data['rest_timeout_ms']!,
+          _restTimeoutMsMeta,
+        ),
+      );
+    }
     if (data.containsKey('timeout_behavior')) {
       context.handle(
         _timeoutBehaviorMeta,
         timeoutBehavior.isAcceptableOrUnknown(
           data['timeout_behavior']!,
           _timeoutBehaviorMeta,
+        ),
+      );
+    }
+    if (data.containsKey('rest_timeout_behavior')) {
+      context.handle(
+        _restTimeoutBehaviorMeta,
+        restTimeoutBehavior.isAcceptableOrUnknown(
+          data['rest_timeout_behavior']!,
+          _restTimeoutBehaviorMeta,
         ),
       );
     }
@@ -1406,9 +1711,21 @@ class $TimerSnapshotsTableTable extends TimerSnapshotsTable
         DriftSqlType.int,
         data['${effectivePrefix}reminder_timeout_ms'],
       )!,
+      missedWorkReminderIntervalMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}missed_work_reminder_interval_ms'],
+      )!,
+      restTimeoutMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rest_timeout_ms'],
+      )!,
       timeoutBehavior: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}timeout_behavior'],
+      )!,
+      restTimeoutBehavior: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rest_timeout_behavior'],
       )!,
       restCompletionBehavior: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -1438,7 +1755,10 @@ class TimerSnapshotRow extends DataClass
   final int restDurationMs;
   final int reminderIntervalMs;
   final int reminderTimeoutMs;
+  final int missedWorkReminderIntervalMs;
+  final int restTimeoutMs;
   final String timeoutBehavior;
+  final String restTimeoutBehavior;
   final String restCompletionBehavior;
   const TimerSnapshotRow({
     required this.id,
@@ -1454,7 +1774,10 @@ class TimerSnapshotRow extends DataClass
     required this.restDurationMs,
     required this.reminderIntervalMs,
     required this.reminderTimeoutMs,
+    required this.missedWorkReminderIntervalMs,
+    required this.restTimeoutMs,
     required this.timeoutBehavior,
+    required this.restTimeoutBehavior,
     required this.restCompletionBehavior,
   });
   @override
@@ -1479,7 +1802,12 @@ class TimerSnapshotRow extends DataClass
     map['rest_duration_ms'] = Variable<int>(restDurationMs);
     map['reminder_interval_ms'] = Variable<int>(reminderIntervalMs);
     map['reminder_timeout_ms'] = Variable<int>(reminderTimeoutMs);
+    map['missed_work_reminder_interval_ms'] = Variable<int>(
+      missedWorkReminderIntervalMs,
+    );
+    map['rest_timeout_ms'] = Variable<int>(restTimeoutMs);
     map['timeout_behavior'] = Variable<String>(timeoutBehavior);
+    map['rest_timeout_behavior'] = Variable<String>(restTimeoutBehavior);
     map['rest_completion_behavior'] = Variable<String>(restCompletionBehavior);
     return map;
   }
@@ -1505,7 +1833,10 @@ class TimerSnapshotRow extends DataClass
       restDurationMs: Value(restDurationMs),
       reminderIntervalMs: Value(reminderIntervalMs),
       reminderTimeoutMs: Value(reminderTimeoutMs),
+      missedWorkReminderIntervalMs: Value(missedWorkReminderIntervalMs),
+      restTimeoutMs: Value(restTimeoutMs),
       timeoutBehavior: Value(timeoutBehavior),
+      restTimeoutBehavior: Value(restTimeoutBehavior),
       restCompletionBehavior: Value(restCompletionBehavior),
     );
   }
@@ -1533,7 +1864,14 @@ class TimerSnapshotRow extends DataClass
       restDurationMs: serializer.fromJson<int>(json['restDurationMs']),
       reminderIntervalMs: serializer.fromJson<int>(json['reminderIntervalMs']),
       reminderTimeoutMs: serializer.fromJson<int>(json['reminderTimeoutMs']),
+      missedWorkReminderIntervalMs: serializer.fromJson<int>(
+        json['missedWorkReminderIntervalMs'],
+      ),
+      restTimeoutMs: serializer.fromJson<int>(json['restTimeoutMs']),
       timeoutBehavior: serializer.fromJson<String>(json['timeoutBehavior']),
+      restTimeoutBehavior: serializer.fromJson<String>(
+        json['restTimeoutBehavior'],
+      ),
       restCompletionBehavior: serializer.fromJson<String>(
         json['restCompletionBehavior'],
       ),
@@ -1556,7 +1894,12 @@ class TimerSnapshotRow extends DataClass
       'restDurationMs': serializer.toJson<int>(restDurationMs),
       'reminderIntervalMs': serializer.toJson<int>(reminderIntervalMs),
       'reminderTimeoutMs': serializer.toJson<int>(reminderTimeoutMs),
+      'missedWorkReminderIntervalMs': serializer.toJson<int>(
+        missedWorkReminderIntervalMs,
+      ),
+      'restTimeoutMs': serializer.toJson<int>(restTimeoutMs),
       'timeoutBehavior': serializer.toJson<String>(timeoutBehavior),
+      'restTimeoutBehavior': serializer.toJson<String>(restTimeoutBehavior),
       'restCompletionBehavior': serializer.toJson<String>(
         restCompletionBehavior,
       ),
@@ -1577,7 +1920,10 @@ class TimerSnapshotRow extends DataClass
     int? restDurationMs,
     int? reminderIntervalMs,
     int? reminderTimeoutMs,
+    int? missedWorkReminderIntervalMs,
+    int? restTimeoutMs,
     String? timeoutBehavior,
+    String? restTimeoutBehavior,
     String? restCompletionBehavior,
   }) => TimerSnapshotRow(
     id: id ?? this.id,
@@ -1599,7 +1945,11 @@ class TimerSnapshotRow extends DataClass
     restDurationMs: restDurationMs ?? this.restDurationMs,
     reminderIntervalMs: reminderIntervalMs ?? this.reminderIntervalMs,
     reminderTimeoutMs: reminderTimeoutMs ?? this.reminderTimeoutMs,
+    missedWorkReminderIntervalMs:
+        missedWorkReminderIntervalMs ?? this.missedWorkReminderIntervalMs,
+    restTimeoutMs: restTimeoutMs ?? this.restTimeoutMs,
     timeoutBehavior: timeoutBehavior ?? this.timeoutBehavior,
+    restTimeoutBehavior: restTimeoutBehavior ?? this.restTimeoutBehavior,
     restCompletionBehavior:
         restCompletionBehavior ?? this.restCompletionBehavior,
   );
@@ -1636,9 +1986,18 @@ class TimerSnapshotRow extends DataClass
       reminderTimeoutMs: data.reminderTimeoutMs.present
           ? data.reminderTimeoutMs.value
           : this.reminderTimeoutMs,
+      missedWorkReminderIntervalMs: data.missedWorkReminderIntervalMs.present
+          ? data.missedWorkReminderIntervalMs.value
+          : this.missedWorkReminderIntervalMs,
+      restTimeoutMs: data.restTimeoutMs.present
+          ? data.restTimeoutMs.value
+          : this.restTimeoutMs,
       timeoutBehavior: data.timeoutBehavior.present
           ? data.timeoutBehavior.value
           : this.timeoutBehavior,
+      restTimeoutBehavior: data.restTimeoutBehavior.present
+          ? data.restTimeoutBehavior.value
+          : this.restTimeoutBehavior,
       restCompletionBehavior: data.restCompletionBehavior.present
           ? data.restCompletionBehavior.value
           : this.restCompletionBehavior,
@@ -1661,7 +2020,12 @@ class TimerSnapshotRow extends DataClass
           ..write('restDurationMs: $restDurationMs, ')
           ..write('reminderIntervalMs: $reminderIntervalMs, ')
           ..write('reminderTimeoutMs: $reminderTimeoutMs, ')
+          ..write(
+            'missedWorkReminderIntervalMs: $missedWorkReminderIntervalMs, ',
+          )
+          ..write('restTimeoutMs: $restTimeoutMs, ')
           ..write('timeoutBehavior: $timeoutBehavior, ')
+          ..write('restTimeoutBehavior: $restTimeoutBehavior, ')
           ..write('restCompletionBehavior: $restCompletionBehavior')
           ..write(')'))
         .toString();
@@ -1682,7 +2046,10 @@ class TimerSnapshotRow extends DataClass
     restDurationMs,
     reminderIntervalMs,
     reminderTimeoutMs,
+    missedWorkReminderIntervalMs,
+    restTimeoutMs,
     timeoutBehavior,
+    restTimeoutBehavior,
     restCompletionBehavior,
   );
   @override
@@ -1702,7 +2069,11 @@ class TimerSnapshotRow extends DataClass
           other.restDurationMs == this.restDurationMs &&
           other.reminderIntervalMs == this.reminderIntervalMs &&
           other.reminderTimeoutMs == this.reminderTimeoutMs &&
+          other.missedWorkReminderIntervalMs ==
+              this.missedWorkReminderIntervalMs &&
+          other.restTimeoutMs == this.restTimeoutMs &&
           other.timeoutBehavior == this.timeoutBehavior &&
+          other.restTimeoutBehavior == this.restTimeoutBehavior &&
           other.restCompletionBehavior == this.restCompletionBehavior);
 }
 
@@ -1720,7 +2091,10 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
   final Value<int> restDurationMs;
   final Value<int> reminderIntervalMs;
   final Value<int> reminderTimeoutMs;
+  final Value<int> missedWorkReminderIntervalMs;
+  final Value<int> restTimeoutMs;
   final Value<String> timeoutBehavior;
+  final Value<String> restTimeoutBehavior;
   final Value<String> restCompletionBehavior;
   const TimerSnapshotsTableCompanion({
     this.id = const Value.absent(),
@@ -1736,7 +2110,10 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
     this.restDurationMs = const Value.absent(),
     this.reminderIntervalMs = const Value.absent(),
     this.reminderTimeoutMs = const Value.absent(),
+    this.missedWorkReminderIntervalMs = const Value.absent(),
+    this.restTimeoutMs = const Value.absent(),
     this.timeoutBehavior = const Value.absent(),
+    this.restTimeoutBehavior = const Value.absent(),
     this.restCompletionBehavior = const Value.absent(),
   });
   TimerSnapshotsTableCompanion.insert({
@@ -1753,7 +2130,10 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
     required int restDurationMs,
     required int reminderIntervalMs,
     required int reminderTimeoutMs,
+    this.missedWorkReminderIntervalMs = const Value.absent(),
+    this.restTimeoutMs = const Value.absent(),
     this.timeoutBehavior = const Value.absent(),
+    this.restTimeoutBehavior = const Value.absent(),
     this.restCompletionBehavior = const Value.absent(),
   }) : cycleId = Value(cycleId),
        revision = Value(revision),
@@ -1778,7 +2158,10 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
     Expression<int>? restDurationMs,
     Expression<int>? reminderIntervalMs,
     Expression<int>? reminderTimeoutMs,
+    Expression<int>? missedWorkReminderIntervalMs,
+    Expression<int>? restTimeoutMs,
     Expression<String>? timeoutBehavior,
+    Expression<String>? restTimeoutBehavior,
     Expression<String>? restCompletionBehavior,
   }) {
     return RawValuesInsertable({
@@ -1797,7 +2180,12 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
       if (reminderIntervalMs != null)
         'reminder_interval_ms': reminderIntervalMs,
       if (reminderTimeoutMs != null) 'reminder_timeout_ms': reminderTimeoutMs,
+      if (missedWorkReminderIntervalMs != null)
+        'missed_work_reminder_interval_ms': missedWorkReminderIntervalMs,
+      if (restTimeoutMs != null) 'rest_timeout_ms': restTimeoutMs,
       if (timeoutBehavior != null) 'timeout_behavior': timeoutBehavior,
+      if (restTimeoutBehavior != null)
+        'rest_timeout_behavior': restTimeoutBehavior,
       if (restCompletionBehavior != null)
         'rest_completion_behavior': restCompletionBehavior,
     });
@@ -1817,7 +2205,10 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
     Value<int>? restDurationMs,
     Value<int>? reminderIntervalMs,
     Value<int>? reminderTimeoutMs,
+    Value<int>? missedWorkReminderIntervalMs,
+    Value<int>? restTimeoutMs,
     Value<String>? timeoutBehavior,
+    Value<String>? restTimeoutBehavior,
     Value<String>? restCompletionBehavior,
   }) {
     return TimerSnapshotsTableCompanion(
@@ -1834,7 +2225,11 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
       restDurationMs: restDurationMs ?? this.restDurationMs,
       reminderIntervalMs: reminderIntervalMs ?? this.reminderIntervalMs,
       reminderTimeoutMs: reminderTimeoutMs ?? this.reminderTimeoutMs,
+      missedWorkReminderIntervalMs:
+          missedWorkReminderIntervalMs ?? this.missedWorkReminderIntervalMs,
+      restTimeoutMs: restTimeoutMs ?? this.restTimeoutMs,
       timeoutBehavior: timeoutBehavior ?? this.timeoutBehavior,
+      restTimeoutBehavior: restTimeoutBehavior ?? this.restTimeoutBehavior,
       restCompletionBehavior:
           restCompletionBehavior ?? this.restCompletionBehavior,
     );
@@ -1884,8 +2279,21 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
     if (reminderTimeoutMs.present) {
       map['reminder_timeout_ms'] = Variable<int>(reminderTimeoutMs.value);
     }
+    if (missedWorkReminderIntervalMs.present) {
+      map['missed_work_reminder_interval_ms'] = Variable<int>(
+        missedWorkReminderIntervalMs.value,
+      );
+    }
+    if (restTimeoutMs.present) {
+      map['rest_timeout_ms'] = Variable<int>(restTimeoutMs.value);
+    }
     if (timeoutBehavior.present) {
       map['timeout_behavior'] = Variable<String>(timeoutBehavior.value);
+    }
+    if (restTimeoutBehavior.present) {
+      map['rest_timeout_behavior'] = Variable<String>(
+        restTimeoutBehavior.value,
+      );
     }
     if (restCompletionBehavior.present) {
       map['rest_completion_behavior'] = Variable<String>(
@@ -1911,7 +2319,12 @@ class TimerSnapshotsTableCompanion extends UpdateCompanion<TimerSnapshotRow> {
           ..write('restDurationMs: $restDurationMs, ')
           ..write('reminderIntervalMs: $reminderIntervalMs, ')
           ..write('reminderTimeoutMs: $reminderTimeoutMs, ')
+          ..write(
+            'missedWorkReminderIntervalMs: $missedWorkReminderIntervalMs, ',
+          )
+          ..write('restTimeoutMs: $restTimeoutMs, ')
           ..write('timeoutBehavior: $timeoutBehavior, ')
+          ..write('restTimeoutBehavior: $restTimeoutBehavior, ')
           ..write('restCompletionBehavior: $restCompletionBehavior')
           ..write(')'))
         .toString();
@@ -3351,16 +3764,20 @@ typedef $$AppSettingsTableTableCreateCompanionBuilder =
       required int restDurationMs,
       required int reminderIntervalMs,
       required int reminderTimeoutMs,
+      Value<int> missedWorkReminderIntervalMs,
+      Value<int> restTimeoutMs,
       required bool androidVibrationEnabled,
       Value<bool> workReminderEnabled,
       Value<bool> restReminderEnabled,
       Value<bool> missedRestReminderEnabled,
+      Value<bool> missedWorkReminderEnabled,
       required String localeCode,
       required String themeModeCode,
       Value<bool> pauseWhenLocked,
       Value<bool> fixedPortraitEnabled,
       Value<bool> minimizeToTrayOnClose,
       Value<String> timeoutBehavior,
+      Value<String> restTimeoutBehavior,
       Value<String> restCompletionBehavior,
     });
 typedef $$AppSettingsTableTableUpdateCompanionBuilder =
@@ -3370,16 +3787,20 @@ typedef $$AppSettingsTableTableUpdateCompanionBuilder =
       Value<int> restDurationMs,
       Value<int> reminderIntervalMs,
       Value<int> reminderTimeoutMs,
+      Value<int> missedWorkReminderIntervalMs,
+      Value<int> restTimeoutMs,
       Value<bool> androidVibrationEnabled,
       Value<bool> workReminderEnabled,
       Value<bool> restReminderEnabled,
       Value<bool> missedRestReminderEnabled,
+      Value<bool> missedWorkReminderEnabled,
       Value<String> localeCode,
       Value<String> themeModeCode,
       Value<bool> pauseWhenLocked,
       Value<bool> fixedPortraitEnabled,
       Value<bool> minimizeToTrayOnClose,
       Value<String> timeoutBehavior,
+      Value<String> restTimeoutBehavior,
       Value<String> restCompletionBehavior,
     });
 
@@ -3417,6 +3838,16 @@ class $$AppSettingsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get missedWorkReminderIntervalMs => $composableBuilder(
+    column: $table.missedWorkReminderIntervalMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get restTimeoutMs => $composableBuilder(
+    column: $table.restTimeoutMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<bool> get androidVibrationEnabled => $composableBuilder(
     column: $table.androidVibrationEnabled,
     builder: (column) => ColumnFilters(column),
@@ -3434,6 +3865,11 @@ class $$AppSettingsTableTableFilterComposer
 
   ColumnFilters<bool> get missedRestReminderEnabled => $composableBuilder(
     column: $table.missedRestReminderEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get missedWorkReminderEnabled => $composableBuilder(
+    column: $table.missedWorkReminderEnabled,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3464,6 +3900,11 @@ class $$AppSettingsTableTableFilterComposer
 
   ColumnFilters<String> get timeoutBehavior => $composableBuilder(
     column: $table.timeoutBehavior,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get restTimeoutBehavior => $composableBuilder(
+    column: $table.restTimeoutBehavior,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3507,6 +3948,16 @@ class $$AppSettingsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get missedWorkReminderIntervalMs => $composableBuilder(
+    column: $table.missedWorkReminderIntervalMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get restTimeoutMs => $composableBuilder(
+    column: $table.restTimeoutMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get androidVibrationEnabled => $composableBuilder(
     column: $table.androidVibrationEnabled,
     builder: (column) => ColumnOrderings(column),
@@ -3524,6 +3975,11 @@ class $$AppSettingsTableTableOrderingComposer
 
   ColumnOrderings<bool> get missedRestReminderEnabled => $composableBuilder(
     column: $table.missedRestReminderEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get missedWorkReminderEnabled => $composableBuilder(
+    column: $table.missedWorkReminderEnabled,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3554,6 +4010,11 @@ class $$AppSettingsTableTableOrderingComposer
 
   ColumnOrderings<String> get timeoutBehavior => $composableBuilder(
     column: $table.timeoutBehavior,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get restTimeoutBehavior => $composableBuilder(
+    column: $table.restTimeoutBehavior,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3595,6 +4056,16 @@ class $$AppSettingsTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get missedWorkReminderIntervalMs => $composableBuilder(
+    column: $table.missedWorkReminderIntervalMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get restTimeoutMs => $composableBuilder(
+    column: $table.restTimeoutMs,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get androidVibrationEnabled => $composableBuilder(
     column: $table.androidVibrationEnabled,
     builder: (column) => column,
@@ -3612,6 +4083,11 @@ class $$AppSettingsTableTableAnnotationComposer
 
   GeneratedColumn<bool> get missedRestReminderEnabled => $composableBuilder(
     column: $table.missedRestReminderEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get missedWorkReminderEnabled => $composableBuilder(
+    column: $table.missedWorkReminderEnabled,
     builder: (column) => column,
   );
 
@@ -3642,6 +4118,11 @@ class $$AppSettingsTableTableAnnotationComposer
 
   GeneratedColumn<String> get timeoutBehavior => $composableBuilder(
     column: $table.timeoutBehavior,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get restTimeoutBehavior => $composableBuilder(
+    column: $table.restTimeoutBehavior,
     builder: (column) => column,
   );
 
@@ -3693,16 +4174,20 @@ class $$AppSettingsTableTableTableManager
                 Value<int> restDurationMs = const Value.absent(),
                 Value<int> reminderIntervalMs = const Value.absent(),
                 Value<int> reminderTimeoutMs = const Value.absent(),
+                Value<int> missedWorkReminderIntervalMs = const Value.absent(),
+                Value<int> restTimeoutMs = const Value.absent(),
                 Value<bool> androidVibrationEnabled = const Value.absent(),
                 Value<bool> workReminderEnabled = const Value.absent(),
                 Value<bool> restReminderEnabled = const Value.absent(),
                 Value<bool> missedRestReminderEnabled = const Value.absent(),
+                Value<bool> missedWorkReminderEnabled = const Value.absent(),
                 Value<String> localeCode = const Value.absent(),
                 Value<String> themeModeCode = const Value.absent(),
                 Value<bool> pauseWhenLocked = const Value.absent(),
                 Value<bool> fixedPortraitEnabled = const Value.absent(),
                 Value<bool> minimizeToTrayOnClose = const Value.absent(),
                 Value<String> timeoutBehavior = const Value.absent(),
+                Value<String> restTimeoutBehavior = const Value.absent(),
                 Value<String> restCompletionBehavior = const Value.absent(),
               }) => AppSettingsTableCompanion(
                 id: id,
@@ -3710,16 +4195,20 @@ class $$AppSettingsTableTableTableManager
                 restDurationMs: restDurationMs,
                 reminderIntervalMs: reminderIntervalMs,
                 reminderTimeoutMs: reminderTimeoutMs,
+                missedWorkReminderIntervalMs: missedWorkReminderIntervalMs,
+                restTimeoutMs: restTimeoutMs,
                 androidVibrationEnabled: androidVibrationEnabled,
                 workReminderEnabled: workReminderEnabled,
                 restReminderEnabled: restReminderEnabled,
                 missedRestReminderEnabled: missedRestReminderEnabled,
+                missedWorkReminderEnabled: missedWorkReminderEnabled,
                 localeCode: localeCode,
                 themeModeCode: themeModeCode,
                 pauseWhenLocked: pauseWhenLocked,
                 fixedPortraitEnabled: fixedPortraitEnabled,
                 minimizeToTrayOnClose: minimizeToTrayOnClose,
                 timeoutBehavior: timeoutBehavior,
+                restTimeoutBehavior: restTimeoutBehavior,
                 restCompletionBehavior: restCompletionBehavior,
               ),
           createCompanionCallback:
@@ -3729,16 +4218,20 @@ class $$AppSettingsTableTableTableManager
                 required int restDurationMs,
                 required int reminderIntervalMs,
                 required int reminderTimeoutMs,
+                Value<int> missedWorkReminderIntervalMs = const Value.absent(),
+                Value<int> restTimeoutMs = const Value.absent(),
                 required bool androidVibrationEnabled,
                 Value<bool> workReminderEnabled = const Value.absent(),
                 Value<bool> restReminderEnabled = const Value.absent(),
                 Value<bool> missedRestReminderEnabled = const Value.absent(),
+                Value<bool> missedWorkReminderEnabled = const Value.absent(),
                 required String localeCode,
                 required String themeModeCode,
                 Value<bool> pauseWhenLocked = const Value.absent(),
                 Value<bool> fixedPortraitEnabled = const Value.absent(),
                 Value<bool> minimizeToTrayOnClose = const Value.absent(),
                 Value<String> timeoutBehavior = const Value.absent(),
+                Value<String> restTimeoutBehavior = const Value.absent(),
                 Value<String> restCompletionBehavior = const Value.absent(),
               }) => AppSettingsTableCompanion.insert(
                 id: id,
@@ -3746,16 +4239,20 @@ class $$AppSettingsTableTableTableManager
                 restDurationMs: restDurationMs,
                 reminderIntervalMs: reminderIntervalMs,
                 reminderTimeoutMs: reminderTimeoutMs,
+                missedWorkReminderIntervalMs: missedWorkReminderIntervalMs,
+                restTimeoutMs: restTimeoutMs,
                 androidVibrationEnabled: androidVibrationEnabled,
                 workReminderEnabled: workReminderEnabled,
                 restReminderEnabled: restReminderEnabled,
                 missedRestReminderEnabled: missedRestReminderEnabled,
+                missedWorkReminderEnabled: missedWorkReminderEnabled,
                 localeCode: localeCode,
                 themeModeCode: themeModeCode,
                 pauseWhenLocked: pauseWhenLocked,
                 fixedPortraitEnabled: fixedPortraitEnabled,
                 minimizeToTrayOnClose: minimizeToTrayOnClose,
                 timeoutBehavior: timeoutBehavior,
+                restTimeoutBehavior: restTimeoutBehavior,
                 restCompletionBehavior: restCompletionBehavior,
               ),
           withReferenceMapper: (p0) => p0
@@ -3798,7 +4295,10 @@ typedef $$TimerSnapshotsTableTableCreateCompanionBuilder =
       required int restDurationMs,
       required int reminderIntervalMs,
       required int reminderTimeoutMs,
+      Value<int> missedWorkReminderIntervalMs,
+      Value<int> restTimeoutMs,
       Value<String> timeoutBehavior,
+      Value<String> restTimeoutBehavior,
       Value<String> restCompletionBehavior,
     });
 typedef $$TimerSnapshotsTableTableUpdateCompanionBuilder =
@@ -3816,7 +4316,10 @@ typedef $$TimerSnapshotsTableTableUpdateCompanionBuilder =
       Value<int> restDurationMs,
       Value<int> reminderIntervalMs,
       Value<int> reminderTimeoutMs,
+      Value<int> missedWorkReminderIntervalMs,
+      Value<int> restTimeoutMs,
       Value<String> timeoutBehavior,
+      Value<String> restTimeoutBehavior,
       Value<String> restCompletionBehavior,
     });
 
@@ -3894,8 +4397,23 @@ class $$TimerSnapshotsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get missedWorkReminderIntervalMs => $composableBuilder(
+    column: $table.missedWorkReminderIntervalMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get restTimeoutMs => $composableBuilder(
+    column: $table.restTimeoutMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get timeoutBehavior => $composableBuilder(
     column: $table.timeoutBehavior,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get restTimeoutBehavior => $composableBuilder(
+    column: $table.restTimeoutBehavior,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3979,8 +4497,23 @@ class $$TimerSnapshotsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get missedWorkReminderIntervalMs => $composableBuilder(
+    column: $table.missedWorkReminderIntervalMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get restTimeoutMs => $composableBuilder(
+    column: $table.restTimeoutMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get timeoutBehavior => $composableBuilder(
     column: $table.timeoutBehavior,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get restTimeoutBehavior => $composableBuilder(
+    column: $table.restTimeoutBehavior,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4056,8 +4589,23 @@ class $$TimerSnapshotsTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get missedWorkReminderIntervalMs => $composableBuilder(
+    column: $table.missedWorkReminderIntervalMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get restTimeoutMs => $composableBuilder(
+    column: $table.restTimeoutMs,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get timeoutBehavior => $composableBuilder(
     column: $table.timeoutBehavior,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get restTimeoutBehavior => $composableBuilder(
+    column: $table.restTimeoutBehavior,
     builder: (column) => column,
   );
 
@@ -4123,7 +4671,10 @@ class $$TimerSnapshotsTableTableTableManager
                 Value<int> restDurationMs = const Value.absent(),
                 Value<int> reminderIntervalMs = const Value.absent(),
                 Value<int> reminderTimeoutMs = const Value.absent(),
+                Value<int> missedWorkReminderIntervalMs = const Value.absent(),
+                Value<int> restTimeoutMs = const Value.absent(),
                 Value<String> timeoutBehavior = const Value.absent(),
+                Value<String> restTimeoutBehavior = const Value.absent(),
                 Value<String> restCompletionBehavior = const Value.absent(),
               }) => TimerSnapshotsTableCompanion(
                 id: id,
@@ -4139,7 +4690,10 @@ class $$TimerSnapshotsTableTableTableManager
                 restDurationMs: restDurationMs,
                 reminderIntervalMs: reminderIntervalMs,
                 reminderTimeoutMs: reminderTimeoutMs,
+                missedWorkReminderIntervalMs: missedWorkReminderIntervalMs,
+                restTimeoutMs: restTimeoutMs,
                 timeoutBehavior: timeoutBehavior,
+                restTimeoutBehavior: restTimeoutBehavior,
                 restCompletionBehavior: restCompletionBehavior,
               ),
           createCompanionCallback:
@@ -4157,7 +4711,10 @@ class $$TimerSnapshotsTableTableTableManager
                 required int restDurationMs,
                 required int reminderIntervalMs,
                 required int reminderTimeoutMs,
+                Value<int> missedWorkReminderIntervalMs = const Value.absent(),
+                Value<int> restTimeoutMs = const Value.absent(),
                 Value<String> timeoutBehavior = const Value.absent(),
+                Value<String> restTimeoutBehavior = const Value.absent(),
                 Value<String> restCompletionBehavior = const Value.absent(),
               }) => TimerSnapshotsTableCompanion.insert(
                 id: id,
@@ -4173,7 +4730,10 @@ class $$TimerSnapshotsTableTableTableManager
                 restDurationMs: restDurationMs,
                 reminderIntervalMs: reminderIntervalMs,
                 reminderTimeoutMs: reminderTimeoutMs,
+                missedWorkReminderIntervalMs: missedWorkReminderIntervalMs,
+                restTimeoutMs: restTimeoutMs,
                 timeoutBehavior: timeoutBehavior,
+                restTimeoutBehavior: restTimeoutBehavior,
                 restCompletionBehavior: restCompletionBehavior,
               ),
           withReferenceMapper: (p0) => p0

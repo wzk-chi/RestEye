@@ -164,6 +164,12 @@ abstract class AppLocalizations {
   /// **'休息中'**
   String get timerPhaseResting;
 
+  /// No description provided for @timerPhaseAwaitingWork.
+  ///
+  /// In zh, this message translates to:
+  /// **'休息超时'**
+  String get timerPhaseAwaitingWork;
+
   /// No description provided for @timerPhaseSuspended.
   ///
   /// In zh, this message translates to:
@@ -193,6 +199,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'离开屏幕，缓慢眨眼并放松肩颈。'**
   String get timerRestingMessage;
+
+  /// No description provided for @timerAwaitingWorkMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'休息时间已到，可以开始下一轮工作。'**
+  String get timerAwaitingWorkMessage;
 
   /// No description provided for @timerSuspendedMessage.
   ///
@@ -371,8 +383,26 @@ abstract class AppLocalizations {
   /// No description provided for @settingsWorkReminderDescription.
   ///
   /// In zh, this message translates to:
-  /// **'休息结束后提醒开始工作。'**
+  /// **'休息时间用完时提醒开始工作。'**
   String get settingsWorkReminderDescription;
+
+  /// No description provided for @settingsMissedWorkReminder.
+  ///
+  /// In zh, this message translates to:
+  /// **'未工作重复提醒'**
+  String get settingsMissedWorkReminder;
+
+  /// No description provided for @settingsMissedWorkReminderDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续休息且未开始工作时，按设定间隔重复提醒。'**
+  String get settingsMissedWorkReminderDescription;
+
+  /// No description provided for @settingsMissedWorkReminderInterval.
+  ///
+  /// In zh, this message translates to:
+  /// **'未工作提醒间隔'**
+  String get settingsMissedWorkReminderInterval;
 
   /// No description provided for @settingsRestReminder.
   ///
@@ -413,8 +443,20 @@ abstract class AppLocalizations {
   /// No description provided for @settingsTimeoutBehavior.
   ///
   /// In zh, this message translates to:
-  /// **'超时后处理'**
+  /// **'未休息超时后处理'**
   String get settingsTimeoutBehavior;
+
+  /// No description provided for @settingsRestTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'休息超时时间'**
+  String get settingsRestTimeout;
+
+  /// No description provided for @settingsRestTimeoutBehavior.
+  ///
+  /// In zh, this message translates to:
+  /// **'休息超时后处理'**
+  String get settingsRestTimeoutBehavior;
 
   /// No description provided for @settingsTimeoutNextCycle.
   ///
@@ -602,6 +644,24 @@ abstract class AppLocalizations {
   /// **'超时时间必须大于提醒间隔。'**
   String get validationTimeoutAfterInterval;
 
+  /// No description provided for @validationMissedWorkReminderRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'未工作提醒间隔需在 1 至 30 分钟之间。'**
+  String get validationMissedWorkReminderRange;
+
+  /// No description provided for @validationRestTimeoutRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'休息超时时间需在 2 至 120 分钟之间。'**
+  String get validationRestTimeoutRange;
+
+  /// No description provided for @validationRestTimeoutAfterInterval.
+  ///
+  /// In zh, this message translates to:
+  /// **'休息超时时间必须大于未工作提醒间隔。'**
+  String get validationRestTimeoutAfterInterval;
+
   /// No description provided for @statisticsTitle.
   ///
   /// In zh, this message translates to:
@@ -731,13 +791,13 @@ abstract class AppLocalizations {
   /// No description provided for @notificationRestCompleteTitle.
   ///
   /// In zh, this message translates to:
-  /// **'休息完成'**
+  /// **'该开始工作了'**
   String get notificationRestCompleteTitle;
 
   /// No description provided for @notificationRestCompleteBody.
   ///
   /// In zh, this message translates to:
-  /// **'休息时间已到。'**
+  /// **'休息时间已用完，可以开始下一轮工作了。'**
   String get notificationRestCompleteBody;
 
   /// No description provided for @notificationActionStartRest.

@@ -129,6 +129,29 @@ class _SettingsContent extends ConsumerWidget {
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
+                  title: Text(strings.settingsMissedWorkReminder),
+                  subtitle: Text(strings.settingsMissedWorkReminderDescription),
+                  value: state.draft.missedWorkReminderEnabled,
+                  onChanged: controller.setMissedWorkReminderEnabled,
+                ),
+                const Divider(height: 1),
+                _DurationSlider(
+                  title: strings.settingsMissedWorkReminderInterval,
+                  value: state.draft.missedWorkReminderInterval.inMinutes
+                      .toDouble(),
+                  min: 1,
+                  max: 30,
+                  divisions: 29,
+                  valueLabel: strings.settingsMinutesValue(
+                    state.draft.missedWorkReminderInterval.inMinutes,
+                  ),
+                  onChanged: (value) =>
+                      controller.setMissedWorkReminderInterval(
+                        Duration(minutes: value.round()),
+                      ),
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
                   title: Text(strings.settingsRestReminder),
                   subtitle: Text(strings.settingsRestReminderDescription),
                   value: state.draft.restReminderEnabled,
@@ -221,8 +244,29 @@ class _SettingsContent extends ConsumerWidget {
                 ),
                 const Divider(height: 1),
                 _TimeoutBehaviorSelector(
+                  title: strings.settingsTimeoutBehavior,
                   value: state.draft.timeoutBehavior,
                   onChanged: controller.setTimeoutBehavior,
+                ),
+                const Divider(height: 1),
+                _DurationSlider(
+                  title: strings.settingsRestTimeout,
+                  value: state.draft.restTimeout.inMinutes.toDouble(),
+                  min: 2,
+                  max: 120,
+                  divisions: 118,
+                  valueLabel: strings.settingsMinutesValue(
+                    state.draft.restTimeout.inMinutes,
+                  ),
+                  onChanged: (value) => controller.setRestTimeout(
+                    Duration(minutes: value.round()),
+                  ),
+                ),
+                const Divider(height: 1),
+                _TimeoutBehaviorSelector(
+                  title: strings.settingsRestTimeoutBehavior,
+                  value: state.draft.restTimeoutBehavior,
+                  onChanged: controller.setRestTimeoutBehavior,
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
@@ -361,6 +405,12 @@ class _SettingsContent extends ConsumerWidget {
         strings.validationTimeoutRange,
       ValidationFailureCode.reminderTimeoutNotAfterInterval =>
         strings.validationTimeoutAfterInterval,
+      ValidationFailureCode.missedWorkReminderIntervalOutOfRange =>
+        strings.validationMissedWorkReminderRange,
+      ValidationFailureCode.restTimeoutOutOfRange =>
+        strings.validationRestTimeoutRange,
+      ValidationFailureCode.restTimeoutNotAfterInterval =>
+        strings.validationRestTimeoutAfterInterval,
     };
   }
 }
@@ -378,10 +428,12 @@ class _SettingsSection extends StatelessWidget {
 
 class _TimeoutBehaviorSelector extends StatelessWidget {
   const _TimeoutBehaviorSelector({
+    required this.title,
     required this.value,
     required this.onChanged,
   });
 
+  final String title;
   final TimeoutBehavior value;
   final ValueChanged<TimeoutBehavior> onChanged;
 
@@ -398,10 +450,7 @@ class _TimeoutBehaviorSelector extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            strings.settingsTimeoutBehavior,
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
+          Text(title, style: Theme.of(context).textTheme.bodyLarge),
           SizedBox(height: context.spacing.md),
           SegmentedButton<TimeoutBehavior>(
             segments: [
