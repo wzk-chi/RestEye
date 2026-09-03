@@ -21,6 +21,11 @@ $version = $Matches['version'].Split('+')[0]
 $releaseDirectory = Join-Path $repoRoot 'build\windows\x64\runner\Release'
 $artifactDirectory = Join-Path $repoRoot 'artifacts'
 $issPath = Join-Path $repoRoot 'tool\RestEye.iss'
+$setupIconPath = Join-Path $repoRoot 'windows\runner\resources\app_icon.ico'
+
+if (-not (Test-Path -LiteralPath $setupIconPath)) {
+    throw "Windows setup icon was not found: $setupIconPath"
+}
 
 if (Get-Process -Name 'rest_eye' -ErrorAction SilentlyContinue) {
     throw 'RestEye is running. Close it before building the Windows release.'
@@ -55,7 +60,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $releaseDirectory 'rest_eye.exe'))) 
 
 New-Item -ItemType Directory -Force -Path $artifactDirectory | Out-Null
 Write-Host 'Building the RestEye installer with Inno Setup...'
-& $isccPath "/DAppVersion=$version" "/DSourceDir=$releaseDirectory" "/DOutputDir=$artifactDirectory" $issPath
+& $isccPath "/DAppVersion=$version" "/DSourceDir=$releaseDirectory" "/DOutputDir=$artifactDirectory" "/DSetupIconFile=$setupIconPath" $issPath
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

@@ -7,6 +7,9 @@
 #ifndef OutputDir
   #define OutputDir "artifacts"
 #endif
+#ifndef SetupIconFile
+  #define SetupIconFile "..\\windows\\runner\\resources\\app_icon.ico"
+#endif
 
 [Setup]
 AppId={{8F50D0A4-1A13-4F5D-9A5B-7F7C50C1D7E8}
@@ -21,19 +24,21 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#OutputDir}
+SetupIconFile={#SetupIconFile}
 OutputBaseFilename=RestEye-{#AppVersion}-windows-x64-setup
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayName=RestEye
+UninstallDisplayIcon={app}\\rest_eye.exe
 Uninstallable=yes
 
 [Files]
 Source: "{#SourceDir}\\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\\RestEye"; Filename: "{app}\\rest_eye.exe"; WorkingDir: "{app}"
-Name: "{autodesktop}\\RestEye"; Filename: "{app}\\rest_eye.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autoprograms}\\RestEye"; Filename: "{app}\\rest_eye.exe"; IconFilename: "{app}\\rest_eye.exe"; WorkingDir: "{app}"
+Name: "{autodesktop}\\RestEye"; Filename: "{app}\\rest_eye.exe"; IconFilename: "{app}\\rest_eye.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加快捷方式："
