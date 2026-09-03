@@ -5,6 +5,7 @@ import 'package:rest_eye/features/settings/application/settings_controller.dart'
 import 'package:rest_eye/features/timer/application/ports/notification_gateway.dart';
 import 'package:rest_eye/features/timer/application/ports/platform_capabilities.dart';
 import 'package:rest_eye/features/timer/domain/timer_phase.dart';
+import 'package:rest_eye/features/timer/domain/timer_policy.dart';
 import 'package:rest_eye/features/timer/domain/timer_snapshot.dart';
 import 'package:rest_eye/features/timer/presentation/timer_controller.dart';
 import 'package:rest_eye/features/timer/presentation/widgets/countdown_card.dart';
@@ -157,7 +158,10 @@ class TimerPage extends ConsumerWidget {
       return displayDuration.isNegative ? Duration.zero : displayDuration;
     }
     if (snapshot.phase == TimerPhase.resting &&
-        snapshot.deadlineAtUtc == null) {
+        snapshot.cycleConfig.restCompletionBehavior ==
+            RestCompletionBehavior.continueRest &&
+        (snapshot.deadlineAtUtc == null ||
+            displayDuration > snapshot.cycleConfig.restDuration)) {
       return displayDuration.isNegative ? Duration.zero : displayDuration;
     }
     final totalDuration = switch (snapshot.phase) {

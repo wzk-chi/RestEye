@@ -25,6 +25,7 @@ final class LocalNotificationGateway implements NotificationGateway {
   static const _skipRestAction = 'skipRest';
   static const _restCategory = 'restEyeRestActions';
   static const _windowsGuid = 'f9bd2cd7-4f6c-4a16-b65d-2fbe306b77ef';
+  static const _windowsNotificationIconAsset = 'assets/brand/resteye_icon.png';
 
   final SettingsRepository _settingsRepository;
   final AppClock _clock;
@@ -379,8 +380,11 @@ final class LocalNotificationGateway implements NotificationGateway {
     final launchAttribute = payload == null
         ? ''
         : ' launch="${_xmlEscape(payload)}"';
+    final iconUri = WindowsImage.getAssetUri(_windowsNotificationIconAsset);
     return '<toast duration="long"$launchAttribute useButtonStyle="true">'
         '<visual><binding template="ToastGeneric">'
+        '<image placement="appLogoOverride" src="${_xmlEscape(iconUri.toString())}" '
+        'hint-crop="circle"/>'
         '<text>${_xmlEscape(title)}</text>'
         '<text>${_xmlEscape(body)}</text>'
         '</binding></visual>'

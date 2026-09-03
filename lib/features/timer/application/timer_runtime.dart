@@ -8,7 +8,6 @@ import 'package:rest_eye/features/timer/application/timer_command_dispatcher.dar
 import 'package:rest_eye/features/timer/application/timer_cycle_config_factory.dart';
 import 'package:rest_eye/features/timer/domain/timer_command.dart';
 import 'package:rest_eye/features/timer/domain/timer_phase.dart';
-import 'package:rest_eye/features/timer/domain/timer_policy.dart';
 import 'package:rest_eye/features/timer/domain/timer_snapshot.dart';
 
 final class TimerRuntimeTick {
@@ -208,11 +207,7 @@ final class TimerRuntime {
         : calculated.isNegative
         ? Duration.zero
         : calculated;
-    final displayDuration =
-        _snapshot.phase == TimerPhase.resting &&
-            _snapshot.deadlineAtUtc == null &&
-            _snapshot.cycleConfig.restCompletionBehavior ==
-                RestCompletionBehavior.continueRest
+    final displayDuration = _snapshot.isContinuingRestAt(_clock.utcNow)
         ? _nonNegativeDuration(_clock.utcNow.difference(_snapshot.startedAtUtc))
         : _snapshot.displayDurationForRemaining(remaining);
     if (_debugLogging &&

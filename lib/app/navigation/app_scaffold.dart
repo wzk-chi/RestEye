@@ -87,8 +87,8 @@ class _AppScaffoldState extends State<AppScaffold> {
   List<_Destination> _destinations(AppLocalizations strings) {
     return [
       _Destination(
-        icon: Icons.timer_outlined,
-        selectedIcon: Icons.timer,
+        icon: Icons.home_outlined,
+        selectedIcon: Icons.home,
         label: strings.navigationHome,
       ),
       _Destination(
