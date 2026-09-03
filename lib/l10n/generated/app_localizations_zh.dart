@@ -19,7 +19,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appTagline => '轻松保持工作与休息节奏';
 
   @override
-  String get navigationToday => '今日';
+  String get navigationHome => '首页';
 
   @override
   String get navigationSettings => '设置';

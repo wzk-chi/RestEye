@@ -49,7 +49,7 @@ class TimerPage extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                strings.navigationToday,
+                strings.appTitle,
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
               SizedBox(height: context.spacing.xs),

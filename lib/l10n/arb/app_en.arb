@@ -3,7 +3,7 @@
   "appTitle": "RestEye",
   "appFullName": "RestEye",
   "appTagline": "A gentler rhythm for work and rest",
-  "navigationToday": "Today",
+  "navigationHome": "Home",
   "navigationSettings": "Settings",
   "navigationStatistics": "Statistics",
   "navigationAbout": "About",

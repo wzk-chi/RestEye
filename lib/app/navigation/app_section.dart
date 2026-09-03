@@ -1,1 +1,1 @@
-enum AppSection { today, statistics, settings }
+enum AppSection { home, statistics, settings }

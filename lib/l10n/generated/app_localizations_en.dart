@@ -19,7 +19,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTagline => 'A gentler rhythm for work and rest';
 
   @override
-  String get navigationToday => 'Today';
+  String get navigationHome => 'Home';
 
   @override
   String get navigationSettings => 'Settings';

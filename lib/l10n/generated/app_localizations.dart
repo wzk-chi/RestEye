@@ -116,11 +116,11 @@ abstract class AppLocalizations {
   /// **'轻松保持工作与休息节奏'**
   String get appTagline;
 
-  /// No description provided for @navigationToday.
+  /// No description provided for @navigationHome.
   ///
   /// In zh, this message translates to:
-  /// **'今日'**
-  String get navigationToday;
+  /// **'首页'**
+  String get navigationHome;
 
   /// No description provided for @navigationSettings.
   ///

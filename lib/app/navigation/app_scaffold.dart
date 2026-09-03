@@ -13,7 +13,7 @@ class AppScaffold extends StatefulWidget {
 }
 
 class _AppScaffoldState extends State<AppScaffold> {
-  var _selected = AppSection.today;
+  var _selected = AppSection.home;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +25,7 @@ class _AppScaffoldState extends State<AppScaffold> {
         final content = IndexedStack(
           index: _selected.index,
           children: [
-            _selected == AppSection.today
+            _selected == AppSection.home
                 ? const TimerPage()
                 : const SizedBox.shrink(),
             _selected == AppSection.statistics
@@ -89,7 +89,7 @@ class _AppScaffoldState extends State<AppScaffold> {
       _Destination(
         icon: Icons.timer_outlined,
         selectedIcon: Icons.timer,
-        label: strings.navigationToday,
+        label: strings.navigationHome,
       ),
       _Destination(
         icon: Icons.bar_chart_outlined,
