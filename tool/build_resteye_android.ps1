@@ -6,6 +6,13 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 Set-Location $repoRoot
 
+if ([string]::IsNullOrWhiteSpace($env:PUB_CACHE)) {
+    $env:PUB_CACHE = [Environment]::GetEnvironmentVariable('PUB_CACHE', 'User')
+}
+if ([string]::IsNullOrWhiteSpace($env:PUB_CACHE)) {
+    $env:PUB_CACHE = [Environment]::GetEnvironmentVariable('PUB_CACHE', 'Machine')
+}
+
 $pubspecPath = Join-Path $repoRoot 'pubspec.yaml'
 $keyPropertiesPath = Join-Path $repoRoot 'android\key.properties'
 $flutterApkPath = Join-Path $repoRoot 'build\app\outputs\flutter-apk\app-arm64-v8a-release.apk'

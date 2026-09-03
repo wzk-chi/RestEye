@@ -9,6 +9,9 @@ Set-Location $repoRoot
 if ([string]::IsNullOrWhiteSpace($env:PUB_CACHE)) {
     $env:PUB_CACHE = [Environment]::GetEnvironmentVariable('PUB_CACHE', 'User')
 }
+if ([string]::IsNullOrWhiteSpace($env:PUB_CACHE)) {
+    $env:PUB_CACHE = [Environment]::GetEnvironmentVariable('PUB_CACHE', 'Machine')
+}
 
 $versionLine = Get-Content -LiteralPath (Join-Path $repoRoot 'pubspec.yaml') |
     Where-Object { $_ -match '^version:\s*\S+' } |

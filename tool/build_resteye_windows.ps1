@@ -9,6 +9,9 @@ Set-Location $repoRoot
 if ([string]::IsNullOrWhiteSpace($env:PUB_CACHE)) {
     $env:PUB_CACHE = [Environment]::GetEnvironmentVariable('PUB_CACHE', 'User')
 }
+if ([string]::IsNullOrWhiteSpace($env:PUB_CACHE)) {
+    $env:PUB_CACHE = [Environment]::GetEnvironmentVariable('PUB_CACHE', 'Machine')
+}
 
 $versionLine = Get-Content -LiteralPath (Join-Path $repoRoot 'pubspec.yaml') |
     Where-Object { $_ -match '^version:\s*\S+' } |
@@ -19,6 +22,7 @@ if ($versionLine -notmatch '^version:\s*(?<version>\S+)') {
 $version = $Matches['version'].Split('+')[0]
 
 $releaseDirectory = Join-Path $repoRoot 'build\windows\x64\runner\Release'
+$releaseExecutablePath = Join-Path $releaseDirectory 'rest_eye.exe'
 $artifactDirectory = Join-Path $repoRoot 'artifacts'
 $issPath = Join-Path $repoRoot 'tool\RestEye.iss'
 $setupIconPath = Join-Path $repoRoot 'windows\runner\resources\app_icon.ico'
@@ -27,7 +31,16 @@ if (-not (Test-Path -LiteralPath $setupIconPath)) {
     throw "Windows setup icon was not found: $setupIconPath"
 }
 
-if (Get-Process -Name 'rest_eye' -ErrorAction SilentlyContinue) {
+if (
+    Get-Process -Name 'rest_eye' -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.Path -and [String]::Equals(
+                $_.Path,
+                $releaseExecutablePath,
+                [StringComparison]::OrdinalIgnoreCase
+            )
+        }
+) {
     throw 'RestEye is running. Close it before building the Windows release.'
 }
 
