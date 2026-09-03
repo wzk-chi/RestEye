@@ -446,18 +446,6 @@ abstract class AppLocalizations {
   /// **'锁屏时暂停工作计时，解锁后继续。'**
   String get settingsPauseWhenLockedDescription;
 
-  /// No description provided for @settingsSaving.
-  ///
-  /// In zh, this message translates to:
-  /// **'正在自动保存…'**
-  String get settingsSaving;
-
-  /// No description provided for @settingsSaved.
-  ///
-  /// In zh, this message translates to:
-  /// **'已自动保存。'**
-  String get settingsSaved;
-
   /// No description provided for @settingsAutoSaveFailed.
   ///
   /// In zh, this message translates to:
@@ -563,7 +551,7 @@ abstract class AppLocalizations {
   /// No description provided for @timerQuickDurationDescription.
   ///
   /// In zh, this message translates to:
-  /// **'新时长会自动保存，并从下一轮开始生效。'**
+  /// **'新时长从下一轮开始生效。'**
   String get timerQuickDurationDescription;
 
   /// No description provided for @settingsMinutesValue.

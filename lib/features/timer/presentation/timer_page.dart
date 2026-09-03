@@ -421,20 +421,6 @@ class _QuickDurationDialog extends ConsumerWidget {
                   }
                 },
               ),
-              if (state.saving) ...[
-                SizedBox(height: context.spacing.sm),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox.square(
-                      dimension: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    SizedBox(width: context.spacing.sm),
-                    Text(strings.settingsSaving),
-                  ],
-                ),
-              ],
             ],
           ),
           actions: [

@@ -192,12 +192,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsPauseWhenLockedDescription => '锁屏时暂停工作计时，解锁后继续。';
 
   @override
-  String get settingsSaving => '正在自动保存…';
-
-  @override
-  String get settingsSaved => '已自动保存。';
-
-  @override
   String get settingsAutoSaveFailed => '自动保存失败，请重试。';
 
   @override
@@ -251,7 +245,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get timerQuickRestDurationTitle => '设置休息时长';
 
   @override
-  String get timerQuickDurationDescription => '新时长会自动保存，并从下一轮开始生效。';
+  String get timerQuickDurationDescription => '新时长从下一轮开始生效。';
 
   @override
   String settingsMinutesValue(int minutes) {

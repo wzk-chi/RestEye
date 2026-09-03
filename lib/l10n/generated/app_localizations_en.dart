@@ -201,12 +201,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Pause work timing while the device is locked and resume after unlock.';
 
   @override
-  String get settingsSaving => 'Saving automatically…';
-
-  @override
-  String get settingsSaved => 'Saved automatically.';
-
-  @override
   String get settingsAutoSaveFailed => 'Automatic save failed. Try again.';
 
   @override
@@ -262,7 +256,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get timerQuickDurationDescription =>
-      'The new duration saves automatically and applies from the next cycle.';
+      'The new duration applies from the next cycle.';
 
   @override
   String settingsMinutesValue(int minutes) {

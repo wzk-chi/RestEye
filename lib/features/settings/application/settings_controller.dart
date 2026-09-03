@@ -12,7 +12,6 @@ final class SettingsViewState {
     required this.draft,
     this.saving = false,
     this.validationError,
-    this.savedNotice = false,
     this.saveFailureCode,
   });
 
@@ -20,7 +19,6 @@ final class SettingsViewState {
   final AppSettings draft;
   final bool saving;
   final ValidationFailureCode? validationError;
-  final bool savedNotice;
   final String? saveFailureCode;
 
   bool get hasChanges => saved != draft;
@@ -31,7 +29,6 @@ final class SettingsViewState {
     bool? saving,
     ValidationFailureCode? validationError,
     bool clearValidationError = false,
-    bool? savedNotice,
     String? saveFailureCode,
     bool clearSaveFailure = false,
   }) {
@@ -42,7 +39,6 @@ final class SettingsViewState {
       validationError: clearValidationError
           ? null
           : validationError ?? this.validationError,
-      savedNotice: savedNotice ?? this.savedNotice,
       saveFailureCode: clearSaveFailure
           ? null
           : saveFailureCode ?? this.saveFailureCode,
@@ -147,7 +143,6 @@ final class SettingsController extends AsyncNotifier<SettingsViewState> {
         draft: draft,
         validationError: validationError,
         clearValidationError: validationError == null,
-        savedNotice: false,
         clearSaveFailure: true,
       ),
     );
@@ -189,7 +184,6 @@ final class SettingsController extends AsyncNotifier<SettingsViewState> {
       current.copyWith(
         saving: true,
         clearValidationError: true,
-        savedNotice: false,
         clearSaveFailure: true,
       ),
     );
@@ -213,13 +207,7 @@ final class SettingsController extends AsyncNotifier<SettingsViewState> {
       if (latest == null) return;
       final hasPendingValidChanges =
           latest.draft != target && latest.validationError == null;
-      state = AsyncData(
-        latest.copyWith(
-          saving: false,
-          savedNotice: latest.draft == target,
-          clearSaveFailure: true,
-        ),
-      );
+      state = AsyncData(latest.copyWith(saving: false, clearSaveFailure: true));
       if (hasPendingValidChanges) {
         _autoSaveTimer?.cancel();
         _saveAgain = true;
@@ -228,11 +216,7 @@ final class SettingsController extends AsyncNotifier<SettingsViewState> {
       if (!ref.mounted) return;
       final latest = state.value ?? current;
       state = AsyncData(
-        latest.copyWith(
-          saving: false,
-          validationError: failure.validationCode,
-          savedNotice: false,
-        ),
+        latest.copyWith(saving: false, validationError: failure.validationCode),
       );
     } on AppFailure catch (failure) {
       if (!ref.mounted) return;
@@ -241,7 +225,6 @@ final class SettingsController extends AsyncNotifier<SettingsViewState> {
         latest.copyWith(
           saved: persisted ? target : latest.saved,
           saving: false,
-          savedNotice: false,
           saveFailureCode: failure.code,
         ),
       );
@@ -252,7 +235,6 @@ final class SettingsController extends AsyncNotifier<SettingsViewState> {
         latest.copyWith(
           saved: persisted ? target : latest.saved,
           saving: false,
-          savedNotice: false,
           saveFailureCode: 'unexpected',
         ),
       );

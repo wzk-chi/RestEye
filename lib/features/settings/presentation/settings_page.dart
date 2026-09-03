@@ -252,25 +252,6 @@ class _SettingsContent extends ConsumerWidget {
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
         ],
-        if (state.saving) ...[
-          SizedBox(height: context.spacing.md),
-          Row(
-            children: [
-              const SizedBox.square(
-                dimension: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              SizedBox(width: context.spacing.sm),
-              Text(strings.settingsSaving),
-            ],
-          ),
-        ] else if (state.savedNotice) ...[
-          SizedBox(height: context.spacing.md),
-          Text(
-            strings.settingsSaved,
-            style: TextStyle(color: Theme.of(context).colorScheme.primary),
-          ),
-        ],
         if (state.saveFailureCode != null) ...[
           SizedBox(height: context.spacing.md),
           Row(
