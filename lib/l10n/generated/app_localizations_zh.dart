@@ -105,9 +105,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get actionStartRest => '开始休息';
 
   @override
-  String get actionSkipRest => '跳过休息';
-
-  @override
   String get actionStopTimer => '结束计时';
 
   @override
@@ -385,7 +382,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get notificationRestReminderTitle => '别忘了休息眼睛';
 
   @override
-  String get notificationRestReminderBody => '休息有助于缓解疲劳，现在开始休息，或跳过本轮提醒。';
+  String get notificationRestReminderBody => '休息有助于缓解疲劳，现在开始休息。';
 
   @override
   String get notificationRestCompleteTitle => '该开始工作了';
@@ -395,9 +392,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get notificationActionStartRest => '开始休息';
-
-  @override
-  String get notificationActionSkipRest => '跳过';
 
   @override
   String get trayOpenApp => '打开';
@@ -424,6 +418,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutGuidanceBody => '每工作 20 分钟，看向约 6 米外至少 20 秒。';
+
+  @override
+  String get aboutPomodoroTitle => '番茄工作法';
+
+  @override
+  String get aboutPomodoroBody => '把工作分成专注时段和休息时段，在保持专注的同时定期休息，逐步形成规律的工作—休息节奏。';
 
   @override
   String get aboutPrivacyTitle => '本地与隐私';

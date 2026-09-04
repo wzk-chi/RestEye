@@ -64,7 +64,7 @@ final class NotificationPlanProjector {
                   snapshot.cycleConfig.reminderTimeout,
                 ),
                 vibrationEnabled: preferences.vibrationEnabled,
-                hasRestActions: true,
+                hasStartRestAction: true,
                 hasStartWorkAction: false,
               ),
             );
@@ -94,7 +94,7 @@ final class NotificationPlanProjector {
                   scheduledAtUtc: reminder,
                   expiresAtUtc: timeout,
                   vibrationEnabled: preferences.vibrationEnabled,
-                  hasRestActions: true,
+                  hasStartRestAction: true,
                   hasStartWorkAction: false,
                 ),
               );
@@ -123,7 +123,7 @@ final class NotificationPlanProjector {
                 scheduledAtUtc: reminder,
                 expiresAtUtc: timeout,
                 vibrationEnabled: preferences.vibrationEnabled,
-                hasRestActions: true,
+                hasStartRestAction: true,
                 hasStartWorkAction: false,
               ),
             );
@@ -152,7 +152,7 @@ final class NotificationPlanProjector {
                 scheduledAtUtc: deadline,
                 expiresAtUtc: deadline.add(snapshot.cycleConfig.restTimeout),
                 vibrationEnabled: preferences.vibrationEnabled,
-                hasRestActions: false,
+                hasStartRestAction: false,
                 hasStartWorkAction:
                     snapshot.cycleConfig.restCompletionBehavior ==
                     RestCompletionBehavior.continueRest,
@@ -184,7 +184,7 @@ final class NotificationPlanProjector {
                     scheduledAtUtc: reminder,
                     expiresAtUtc: timeout,
                     vibrationEnabled: preferences.vibrationEnabled,
-                    hasRestActions: false,
+                    hasStartRestAction: false,
                     hasStartWorkAction: true,
                   ),
                 );
@@ -216,7 +216,7 @@ final class NotificationPlanProjector {
                 scheduledAtUtc: reminder,
                 expiresAtUtc: timeout,
                 vibrationEnabled: preferences.vibrationEnabled,
-                hasRestActions: false,
+                hasStartRestAction: false,
                 hasStartWorkAction: true,
               ),
             );

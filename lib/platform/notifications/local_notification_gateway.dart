@@ -24,7 +24,6 @@ final class LocalNotificationGateway
   });
 
   static const _startRestAction = 'startRest';
-  static const _skipRestAction = 'skipRest';
   static const _startWorkAction = 'startWork';
   static const _restCategory = 'restEyeRestActions';
   static const _workCategory = 'restEyeWorkActions';
@@ -79,10 +78,6 @@ final class LocalNotificationGateway
               DarwinNotificationAction.plain(
                 _startRestAction,
                 strings.notificationActionStartRest,
-              ),
-              DarwinNotificationAction.plain(
-                _skipRestAction,
-                strings.notificationActionSkipRest,
               ),
             ],
           ),
@@ -306,17 +301,11 @@ final class LocalNotificationGateway
       'expectedPhase': notification.expectedPhase.name,
       'expiresAtUtc': notification.expiresAtUtc.toUtc().toIso8601String(),
     });
-    final androidActions = notification.hasRestActions
+    final androidActions = notification.hasStartRestAction
         ? [
             AndroidNotificationAction(
               _startRestAction,
               strings.notificationActionStartRest,
-              showsUserInterface: false,
-              cancelNotification: false,
-            ),
-            AndroidNotificationAction(
-              _skipRestAction,
-              strings.notificationActionSkipRest,
               showsUserInterface: false,
               cancelNotification: false,
             ),
@@ -331,15 +320,11 @@ final class LocalNotificationGateway
             ),
           ]
         : const <AndroidNotificationAction>[];
-    final windowsActions = notification.hasRestActions
+    final windowsActions = notification.hasStartRestAction
         ? [
             WindowsAction(
               content: strings.notificationActionStartRest,
               arguments: _windowsActionPayload(_startRestAction, notification),
-            ),
-            WindowsAction(
-              content: strings.notificationActionSkipRest,
-              arguments: _windowsActionPayload(_skipRestAction, notification),
             ),
           ]
         : notification.hasStartWorkAction
@@ -350,7 +335,7 @@ final class LocalNotificationGateway
             ),
           ]
         : const <WindowsAction>[];
-    final darwinCategory = notification.hasRestActions
+    final darwinCategory = notification.hasStartRestAction
         ? _restCategory
         : notification.hasStartWorkAction
         ? _workCategory
@@ -621,8 +606,6 @@ NotificationActionRequest? parseLocalNotificationActionResponse(
     final type = switch (typeCode) {
       LocalNotificationGateway._startRestAction =>
         NotificationActionType.startRest,
-      LocalNotificationGateway._skipRestAction =>
-        NotificationActionType.skipRest,
       LocalNotificationGateway._startWorkAction =>
         NotificationActionType.startWork,
       _ => null,

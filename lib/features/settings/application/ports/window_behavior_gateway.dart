@@ -3,7 +3,6 @@ enum WindowTrayMenuAction {
   startWorkAfterRest,
   resumeWork,
   startRest,
-  skipRest,
   stopTimer,
 }
 

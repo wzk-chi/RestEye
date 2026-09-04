@@ -272,12 +272,6 @@ abstract class AppLocalizations {
   /// **'开始休息'**
   String get actionStartRest;
 
-  /// No description provided for @actionSkipRest.
-  ///
-  /// In zh, this message translates to:
-  /// **'跳过休息'**
-  String get actionSkipRest;
-
   /// No description provided for @actionStopTimer.
   ///
   /// In zh, this message translates to:
@@ -803,7 +797,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationRestReminderBody.
   ///
   /// In zh, this message translates to:
-  /// **'休息有助于缓解疲劳，现在开始休息，或跳过本轮提醒。'**
+  /// **'休息有助于缓解疲劳，现在开始休息。'**
   String get notificationRestReminderBody;
 
   /// No description provided for @notificationRestCompleteTitle.
@@ -823,12 +817,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'开始休息'**
   String get notificationActionStartRest;
-
-  /// No description provided for @notificationActionSkipRest.
-  ///
-  /// In zh, this message translates to:
-  /// **'跳过'**
-  String get notificationActionSkipRest;
 
   /// No description provided for @trayOpenApp.
   ///
@@ -877,6 +865,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'每工作 20 分钟，看向约 6 米外至少 20 秒。'**
   String get aboutGuidanceBody;
+
+  /// No description provided for @aboutPomodoroTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'番茄工作法'**
+  String get aboutPomodoroTitle;
+
+  /// No description provided for @aboutPomodoroBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'把工作分成专注时段和休息时段，在保持专注的同时定期休息，逐步形成规律的工作—休息节奏。'**
+  String get aboutPomodoroBody;
 
   /// No description provided for @aboutPrivacyTitle.
   ///

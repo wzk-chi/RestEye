@@ -74,6 +74,12 @@ class AboutPage extends ConsumerWidget {
                 ),
                 SizedBox(height: context.spacing.md),
                 _AboutCard(
+                  icon: Icons.timer_outlined,
+                  title: strings.aboutPomodoroTitle,
+                  body: strings.aboutPomodoroBody,
+                ),
+                SizedBox(height: context.spacing.md),
+                _AboutCard(
                   icon: Icons.lock_outline,
                   title: strings.aboutPrivacyTitle,
                   body: strings.aboutPrivacyBody,

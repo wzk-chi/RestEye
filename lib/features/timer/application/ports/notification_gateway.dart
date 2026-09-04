@@ -2,7 +2,7 @@ import 'package:rest_eye/features/timer/domain/timer_phase.dart';
 
 enum NotificationKind { workComplete, restReminder, restComplete }
 
-enum NotificationActionType { startRest, skipRest, startWork }
+enum NotificationActionType { startRest, startWork }
 
 enum NotificationPermissionStatus {
   granted,
@@ -38,7 +38,7 @@ final class ScheduledNotification {
     required this.scheduledAtUtc,
     required this.expiresAtUtc,
     required this.vibrationEnabled,
-    required this.hasRestActions,
+    required this.hasStartRestAction,
     required this.hasStartWorkAction,
   });
 
@@ -52,7 +52,7 @@ final class ScheduledNotification {
   /// cycle. This also bounds recovery when a background isolate was offline.
   final DateTime expiresAtUtc;
   final bool vibrationEnabled;
-  final bool hasRestActions;
+  final bool hasStartRestAction;
   final bool hasStartWorkAction;
 }
 

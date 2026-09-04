@@ -17,7 +17,6 @@ abstract final class TimerReducer {
       StartRestCommand value => _startRest(current, value, events),
       SuspendTimerCommand value => _suspend(current, value, events),
       ResumeTimerCommand value => _resume(current, value, events),
-      SkipRestCommand value => _skipRest(current, value, events),
       CompleteRestCommand value => _completeRest(current, value, events),
       StopTimerCommand value => _stop(current, value, events),
       ReconcileTimerCommand value => _reconcile(
@@ -169,38 +168,6 @@ abstract final class TimerReducer {
     );
     return _applied(next, [
       events.create(current.cycleId, TimerEventType.workResumed, at),
-    ]);
-  }
-
-  static TimerTransition _skipRest(
-    TimerSnapshot current,
-    SkipRestCommand command,
-    _EventFactory events,
-  ) {
-    if (current.phase != TimerPhase.awaitingRest) {
-      return TimerTransition.ignored(
-        current,
-        TimerIgnoredReason.invalidForCurrentPhase,
-      );
-    }
-    final at = command.occurredAtUtc.toUtc();
-    final next = _workingSnapshot(
-      previous: current,
-      cycleId: command.nextCycleId,
-      config: command.nextCycleConfig,
-      atUtc: at,
-    );
-    final completedWork = _workDurationToRecord(current, at);
-    return _applied(next, [
-      if (completedWork > Duration.zero)
-        events.create(
-          current.cycleId,
-          TimerEventType.workCompleted,
-          at,
-          duration: completedWork,
-        ),
-      events.create(current.cycleId, TimerEventType.restSkipped, at),
-      events.create(command.nextCycleId, TimerEventType.workStarted, at),
     ]);
   }
 

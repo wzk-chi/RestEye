@@ -110,9 +110,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get actionStartRest => 'Start rest';
 
   @override
-  String get actionSkipRest => 'Skip rest';
-
-  @override
   String get actionStopTimer => 'End timing';
 
   @override
@@ -412,7 +409,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationRestReminderBody =>
-      'Rest helps ease fatigue. Start resting now or skip this reminder.';
+      'Rest helps ease fatigue. Start resting now.';
 
   @override
   String get notificationRestCompleteTitle => 'Time to work';
@@ -423,9 +420,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationActionStartRest => 'Start rest';
-
-  @override
-  String get notificationActionSkipRest => 'Skip';
 
   @override
   String get trayOpenApp => 'Open';
@@ -454,6 +448,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get aboutGuidanceBody =>
       'Every 20 minutes, look about 6 metres away for at least 20 seconds.';
+
+  @override
+  String get aboutPomodoroTitle => 'The Pomodoro technique';
+
+  @override
+  String get aboutPomodoroBody =>
+      'Break work into focused sessions and rest periods. Regular breaks help you stay focused and build a sustainable work-and-rest rhythm.';
 
   @override
   String get aboutPrivacyTitle => 'Local and private';

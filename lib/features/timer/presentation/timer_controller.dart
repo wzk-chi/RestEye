@@ -201,23 +201,6 @@ final class TimerController extends Notifier<TimerViewState> {
     });
   }
 
-  Future<void> skipRest() async {
-    await _run(() async {
-      final settings = await ref.read(settingsRepositoryProvider).load();
-      final dispatcher = ref.read(timerCommandDispatcherProvider);
-      final snapshot = dispatcher.current;
-      return dispatcher.dispatch(
-        SkipRestCommand(
-          commandId: dispatcher.createId('skip-rest'),
-          occurredAtUtc: ref.read(appClockProvider).utcNow,
-          expectedCycleId: snapshot.cycleId,
-          nextCycleId: dispatcher.createId('cycle'),
-          nextCycleConfig: timerCycleConfigFromSettings(settings),
-        ),
-      );
-    });
-  }
-
   Future<void> startWorkAfterRest() async {
     await _run(() async {
       final settings = await ref.read(settingsRepositoryProvider).load();

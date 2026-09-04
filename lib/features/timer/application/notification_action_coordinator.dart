@@ -93,14 +93,6 @@ final class NotificationActionCoordinator {
         expectedCycleId: action.cycleId,
         expectedPhase: action.expectedPhase,
       ),
-      NotificationActionType.skipRest => SkipRestCommand(
-        commandId: action.commandId,
-        occurredAtUtc: action.occurredAtUtc,
-        expectedCycleId: action.cycleId,
-        expectedPhase: action.expectedPhase,
-        nextCycleId: _dispatcher.createId('cycle'),
-        nextCycleConfig: timerCycleConfigFromSettings(settings),
-      ),
       NotificationActionType.startWork => CompleteRestCommand(
         commandId: action.commandId,
         occurredAtUtc: action.occurredAtUtc,

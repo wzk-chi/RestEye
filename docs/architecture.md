@@ -110,13 +110,13 @@ feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model
 | --- | --- |
 | `idle` | 未开始 |
 | `working` | 工作计时，首页显示已工作时长 |
-| `awaitingRest` | 工作完成，等待用户开始或跳过休息，重复提醒在此阶段发生 |
+| `awaitingRest` | 工作完成，等待用户开始休息，重复提醒在此阶段发生 |
 | `resting` | 用户已开始休息的计时，首页显示已休息时长 |
 | `awaitingWork` | 计划休息时间已用完，继续累计休息并等待用户开始工作，未工作重复提醒在此阶段发生 |
 
 `executionStatus` 与 phase 正交，当前为 `active`/`suspended`。开启 `pauseWhenLocked` 后，只有 `working` 会因锁屏变为 `suspended`；解锁/恢复后继续同一 `cycleId`，不重新创建轮次；`awaitingRest`、`resting` 和 `awaitingWork` 不因锁屏改变。若未来需要区分手动暂停、系统挂起等原因，应增加 suspension reason，不复制 phase。
 
-工作达到设定时长后进入 `awaitingRest` 并发出休息提醒：主进度固定为 100%，显示的“已工作”时长继续累加，等待期间视为超时工作。开始休息、跳过休息、停止计时或等待超时结束该阶段时，必须将超时工作追加为 `workCompleted` 事件。休息达到设定时长时必须发出工作提醒，并按当前轮 `restCompletionBehavior` 处理：`startWork` 进入下一轮工作，`stopTimer` 回到 `idle`，`continueRest` 进入 `awaitingWork`。`awaitingWork` 主进度保持 100%，显示的“已休息”时长继续累加，按 `missedWorkReminderInterval` 重复提醒；达到 `restTimeout` 后按 `restTimeoutBehavior` 进入下一轮或结束计时。休息中的“开始工作”操作结束当前休息并进入下一轮，计划休息及超时休息均计入休息统计。超时行为由当前轮配置快照决定，设置保存只影响下一轮；工作/休息时长变化例外——它们会停止活动计时（见 5.4）。
+工作达到设定时长后进入 `awaitingRest` 并发出休息提醒：主进度固定为 100%，显示的“已工作”时长继续累加，等待期间视为超时工作。开始休息、停止计时或等待超时结束该阶段时，必须将超时工作追加为 `workCompleted` 事件。休息达到设定时长时必须发出工作提醒，并按当前轮 `restCompletionBehavior` 处理：`startWork` 进入下一轮工作，`stopTimer` 回到 `idle`，`continueRest` 进入 `awaitingWork`。`awaitingWork` 主进度保持 100%，显示的“已休息”时长继续累加，按 `missedWorkReminderInterval` 重复提醒；达到 `restTimeout` 后按 `restTimeoutBehavior` 进入下一轮或结束计时。休息中的“开始工作”操作结束当前休息并进入下一轮，计划休息及超时休息均计入休息统计。超时行为由当前轮配置快照决定，设置保存只影响下一轮；工作/休息时长变化例外——它们会停止活动计时（见 5.4）。
 
 所有持久化 deadline 使用 UTC 的 `startedAtUtc`、`deadlineAtUtc` 和 `nextReminderAtUtc`。进程存活时首页正计时和进度使用同一次 tick 的单调 elapsed，UI 刷新不是计时来源；工作与等待休息阶段显示累计已工作时长，休息与等待工作阶段显示累计已休息时长。活动计时不得为了存活探测或 UI 刷新执行周期磁盘写入。应用启动或恢复时必须依据当前 UTC 做 reconciliation；发现上一进程遗留的活动计时时，以当前快照最近一次已提交的阶段起点 `startedAtUtc` 为保守截止点，不能把未知的离线时间计入工作或休息。通知动作在后台恢复时最多对账到其 `expiresAtUtc`，不得无界追赶点击时刻。屏幕状态为 `unknown` 时只能发布能力降级，绝不能当作 `off`，也不能改变计时状态。
 
@@ -127,11 +127,11 @@ feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model
 - `app_settings_table`：单行用户设置、语言、主题、四类通知开关、锁屏暂停、固定竖屏、震动开关、工作/休息双向超时行为和休息完成处理。
 - `timer_snapshots_table`：单行当前计时快照、revision、cycle、phase、时间点和当前轮配置。
 - `pending_commands_table`：通知等外部动作的 inbox，按 `commandId` 去重，恢复后可重放。
-- `activity_events_table`：追加式工作/休息/提醒/跳过/超时/屏幕区间事件。
+- `activity_events_table`：追加式工作/休息/提醒/中途结束/超时/屏幕区间事件。
 
-时间点用 UTC 存储，持续时间用整数毫秒；事件同时记录 `localDateKey` 和 UTC offset。跨本地午夜的休息区间必须拆分到对应日期。完整休息统计只读取 `restCompleted` 事件；跳过、超时和停止不增加完整休息次数。统计查询需要防止负数和重复累计。历史 `screenOnInterval` 事件与孤儿 `screen_activity_state` 表保留在数据库中但不再被读取；屏幕状态通道现在只服务锁屏暂停，不再产出亮屏统计。
+时间点用 UTC 存储，持续时间用整数毫秒；事件同时记录 `localDateKey` 和 UTC offset。跨本地午夜的休息区间必须拆分到对应日期。完整休息统计只读取 `restCompleted` 事件；未完成休息、超时和停止不增加完整休息次数。统计查询需要防止负数和重复累计。历史 `screenOnInterval` 事件与孤儿 `screen_activity_state` 表保留在数据库中但不再被读取；屏幕状态通道现在只服务锁屏暂停，不再产出亮屏统计。
 
-`DailyStatistics.timelineSegments` 由 data repository 将 `workCompleted`、`restCompleted` 事件还原为不可变 UTC 时段并按开始时间排序；presentation 只消费该领域模型，不直接读取 Drift row。工作达到设定时长后的超时段会在该阶段结束时追加为 `workCompleted` 事件；时间轴只绘制已记录的工作和完整休息，开放、跳过、超时或未完成阶段不得伪装成完成休息。
+`DailyStatistics.timelineSegments` 由 data repository 将 `workCompleted`、`restCompleted` 事件还原为不可变 UTC 时段并按开始时间排序；presentation 只消费该领域模型，不直接读取 Drift row。工作达到设定时长后的超时段会在该阶段结束时追加为 `workCompleted` 事件；时间轴只绘制已记录的工作和完整休息，开放、中途结束、超时或未完成阶段不得伪装成完成休息。
 
 ## 8. 平台适配与通知
 
@@ -148,11 +148,11 @@ feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model
 
 真正退出使用统一握手：Windows 的窗口关闭与托盘退出在 `WM_CLOSE` 时通过 `dev.resteye/app_exit` 通道调用 Dart 的 `prepareForExit`，Dart 完成 `AppRuntime.dispose()` 后回复，runner 收到结果才继续销毁窗口（回复丢失时再次关窗跳过握手直接退出）；macOS 通过 Flutter 的可等待退出请求等待 `AppRuntime.dispose()`；Android 根路由返回时由 `MainActivity.popSystemNavigator()` 通过 `dev.resteye/app_exit` 请求同一清理链，收到结果后再结束 Activity。Android 切到后台、桌面窗口隐藏、最小化到托盘/菜单栏和锁屏均不触发退出清理；生命周期 `detached` 只作为宿主未能握手时的尽力收尾。任务管理器强杀、系统回收、崩溃和断电不保证回调，相关恢复边界遵循 [ADR 0001](adr/0001-graceful-exit-without-heartbeats.md)。
 
-通知必须由已提交快照和设置推导为期望集合，并由 reconciler 幂等同步。期望集合只由纯 `NotificationPlanProjector` 计算；平台实际接受、展示或正在处理的通知属于独立投递事实，不能写回或伪装成计时快照状态。`restReminderEnabled` 控制工作时间用完时发出的休息提醒，`missedRestReminderEnabled` 控制 `awaitingRest` 的重复提醒；`workReminderEnabled` 控制休息时间用完时发出的工作提醒，`missedWorkReminderEnabled` 控制 `awaitingWork` 的重复提醒。关闭任一开关都必须取消对应的待发通知。通知 ID 使用 `cycleId + effectType + absolute scheduledAtUtc` 的确定性哈希；Android 休息提醒包含“开始休息”和“跳过”动作，并根据设置选择震动/静默 channel。Android 声明 `SCHEDULE_EXACT_ALARM`；有精确闹钟权限时使用 `exactAllowWhileIdle`，否则安全降级为 `inexactAllowWhileIdle`，不能因精确权限缺失而阻断提醒。Windows 使用系统通知能力并明确请求系统默认提示音。Windows Toast XML 固定按 `visual → audio → actions` 顺序生成，避免系统显示通知但忽略声音；macOS 使用各自系统通知能力。Windows runner 使用 `Shell_NotifyIconW` 注册原生托盘图标，macOS 使用 `NSStatusItem` 注册菜单栏图标；两端均提供本地化“打开”和“退出”，且不在这两个菜单标题中重复应用名称。关闭行为开启时窗口只隐藏，打开恢复窗口，退出允许真正结束进程。Dart 通过 `dev.resteye/window_behavior` 的 `setTrayMenu` 一次性提交 tooltip、打开/退出文案和当前计时菜单项；原生端只显示列表，并通过 `dev.resteye/window_behavior/events` 回传稳定 action id。回传动作必须重新进入 `TimerController`/`TimerCommandDispatcher`，不能在 Swift/C++ 中直接修改计时状态。通知声音最终仍受操作系统的应用通知声音、系统音量和专注助手策略控制。通知、权限或屏幕状态不可用时进入明确的 degraded 状态，不能阻断计时或静默修改用户数据。
+通知必须由已提交快照和设置推导为期望集合，并由 reconciler 幂等同步。期望集合只由纯 `NotificationPlanProjector` 计算；平台实际接受、展示或正在处理的通知属于独立投递事实，不能写回或伪装成计时快照状态。`restReminderEnabled` 控制工作时间用完时发出的休息提醒，`missedRestReminderEnabled` 控制 `awaitingRest` 的重复提醒；`workReminderEnabled` 控制休息时间用完时发出的工作提醒，`missedWorkReminderEnabled` 控制 `awaitingWork` 的重复提醒。关闭任一开关都必须取消对应的待发通知。通知 ID 使用 `cycleId + effectType + absolute scheduledAtUtc` 的确定性哈希；Android 休息提醒只提供“开始休息”动作，并根据设置选择震动/静默 channel。Android 声明 `SCHEDULE_EXACT_ALARM`；有精确闹钟权限时使用 `exactAllowWhileIdle`，否则安全降级为 `inexactAllowWhileIdle`，不能因精确权限缺失而阻断提醒。Windows 使用系统通知能力并明确请求系统默认提示音。Windows Toast XML 固定按 `visual → audio → actions` 顺序生成，避免系统显示通知但忽略声音；macOS 使用各自系统通知能力。Windows runner 使用 `Shell_NotifyIconW` 注册原生托盘图标，macOS 使用 `NSStatusItem` 注册菜单栏图标；两端均提供本地化“打开”和“退出”，且不在这两个菜单标题中重复应用名称。关闭行为开启时窗口只隐藏，打开恢复窗口，退出允许真正结束进程。Dart 通过 `dev.resteye/window_behavior` 的 `setTrayMenu` 一次性提交 tooltip、打开/退出文案和当前计时菜单项；原生端只显示列表，并通过 `dev.resteye/window_behavior/events` 回传稳定 action id。回传动作必须重新进入 `TimerController`/`TimerCommandDispatcher`，不能在 Swift/C++ 中直接修改计时状态。通知声音最终仍受操作系统的应用通知声音、系统音量和专注助手策略控制。通知、权限或屏幕状态不可用时进入明确的 degraded 状态，不能阻断计时或静默修改用户数据。
 
 通知实现补充：通知 ID 使用 `cycleId + effectType + absolute scheduledAtUtc` 的确定性哈希，使连续对账只处理新增或到期项目；通知按钮命令 ID 由通知 ID、轮次和动作确定性生成，重复回调进入同一 inbox 项。震动/语言设置变化只强制重写未来的 pending 计划，已经到期或活动中的通知不得重放。通知 gateway 不依赖 settings domain：排程时只接收 `NotificationPresentationOptions`（locale code），初始化时接收 bootstrap 解析好的初始 presentation；gateway 初始化失败（如 Windows 通知图标缺失）只降级通知能力，不得阻断应用启动。每次对账在查询系统 pending/active/claimed 集合后必须重新读取持久化计时快照，调用方传入的快照只能作为 transition 提示，不能覆盖其他 isolate 已提交的新 revision。到达截止点时，若定时通知仍处于 pending 状态，不得在对账器中取消并立即重排程，以避免与原生通知接收器竞态；`NotificationDeliveryTracker` 对 gateway 已接受或系统 inventory 已观察到的确定性通知 ID 保留进程内投递证据，ID 到期后只消费一次。只有平台的 active 查询具有权威性、且通知从未留下投递证据时，pending 与 active 同时缺失才允许触发到期补发；非权威空列表不能作为通知不存在的证据。Windows gateway 通过 package identity 判断 active 查询能力：MSIX 构建可将查询视为权威，当前 Debug 与 Inno Setup 非打包构建的查询恒为空，因此按非权威结果处理；Android 和 macOS 继续使用原生 active 查询，若插件报告不支持或查询失败则安全降级为非权威。按钮回调一到达 gateway 就先按通知 ID 标记为处理中，使 Android、Windows 和 macOS 的并发对账都不会把系统已经移除或正在处理的通知误判为漏发；已 claim 的通知 ID 不再受“到期不取消”保护——计时命令提交后的新状态对账负责取消该通知并释放标记，命令入队失败时 coordinator 释放标记交还对账。Android 通知按钮禁止在原生回调交给 Dart 之前自动取消，确保后台 isolate 按“提交状态，再取消通知”的顺序处理。
 
-Android 定时提醒使用普通通知样式：不设置 `timeoutAfter`，不因点击正文自动清除，允许用户手动划掉；顶部 heads-up 浮层按系统策略消退，但通知栏中的提醒应保留到用户处理或业务状态使其过期。点击通知正文可以打开 RestEye；“开始休息”和“跳过休息”按钮必须在后台 isolate 中通过共享 Drift 数据库重新进入 inbox、dispatcher 和 reducer 管线，不得拉起界面。Android、Windows 和 macOS 的通知操作使用同一套通知认领和确定性命令，不另建平台状态机；按钮 payload 只保存通知 ID、`cycleId`、expected phase 与 `expiresAtUtc`，旧 payload 中存在的 revision 字段仅作兼容忽略。主 isolate 恢复时需要重新读取持久化快照，以接收后台动作已经提交的状态。遗弃活动轮（启动清理、显式停止）必须取消该轮全部通知，不得将旧轮截止点重新补发；从通知冷启动时先处理有效动作，只有动作未应用才执行遗弃清理。工作/休息阶段会提前排程各自有限等待窗口内的重复提醒，因此后台可继续显示提醒；快照状态转换仍以恢复时的领域对账为准。
+Android 定时提醒使用普通通知样式：不设置 `timeoutAfter`，不因点击正文自动清除，允许用户手动划掉；顶部 heads-up 浮层按系统策略消退，但通知栏中的提醒应保留到用户处理或业务状态使其过期。点击通知正文可以打开 RestEye；“开始休息”按钮必须在后台 isolate 中通过共享 Drift 数据库重新进入 inbox、dispatcher 和 reducer 管线，不得拉起界面。Android、Windows 和 macOS 的通知操作使用同一套通知认领和确定性命令，不另建平台状态机；按钮 payload 只保存通知 ID、`cycleId`、expected phase 与 `expiresAtUtc`，旧 payload 中存在的 revision 字段仅作兼容忽略。主 isolate 恢复时需要重新读取持久化快照，以接收后台动作已经提交的状态。遗弃活动轮（启动清理、显式停止）必须取消该轮全部通知，不得将旧轮截止点重新补发；从通知冷启动时先处理有效动作，只有动作未应用才执行遗弃清理。工作/休息阶段会提前排程各自有限等待窗口内的重复提醒，因此后台可继续显示提醒；快照状态转换仍以恢复时的领域对账为准。
 
 ## 9. 本地化、主题与跨平台 UI
 

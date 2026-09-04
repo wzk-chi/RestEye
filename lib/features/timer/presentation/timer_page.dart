@@ -104,7 +104,6 @@ class TimerPage extends ConsumerWidget {
                 onStartWork: controller.startWork,
                 onResumeWork: controller.resumeWork,
                 onStartRest: controller.startRest,
-                onSkipRest: controller.skipRest,
                 onStartWorkAfterRest: controller.startWorkAfterRest,
                 onStop: controller.stop,
               ),
@@ -530,7 +529,6 @@ class _TimerActions extends StatelessWidget {
     required this.onStartWork,
     required this.onResumeWork,
     required this.onStartRest,
-    required this.onSkipRest,
     required this.onStartWorkAfterRest,
     required this.onStop,
   });
@@ -541,7 +539,6 @@ class _TimerActions extends StatelessWidget {
   final VoidCallback onStartWork;
   final VoidCallback onResumeWork;
   final VoidCallback onStartRest;
-  final VoidCallback onSkipRest;
   final VoidCallback onStartWorkAfterRest;
   final VoidCallback onStop;
 
@@ -571,15 +568,10 @@ class _TimerActions extends StatelessWidget {
         ? (strings.actionStopTimer, Icons.stop_outlined, onStop)
         : switch (phase) {
             TimerPhase.idle => null,
-            TimerPhase.working => (
+            TimerPhase.working || TimerPhase.awaitingRest => (
               strings.actionStopTimer,
               Icons.stop_outlined,
               onStop,
-            ),
-            TimerPhase.awaitingRest => (
-              strings.actionSkipRest,
-              Icons.skip_next,
-              onSkipRest,
             ),
             TimerPhase.resting || TimerPhase.awaitingWork => (
               strings.actionStopTimer,

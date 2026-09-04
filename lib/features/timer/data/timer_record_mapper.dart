@@ -86,7 +86,6 @@ abstract final class TimerRecordMapper {
     StartRestCommand() => 'startRest',
     SuspendTimerCommand() => 'suspendTimer',
     ResumeTimerCommand() => 'resumeTimer',
-    SkipRestCommand() => 'skipRest',
     CompleteRestCommand() => 'completeRest',
     StopTimerCommand() => 'stopTimer',
     ReconcileTimerCommand() => 'reconcileTimer',
@@ -111,9 +110,6 @@ abstract final class TimerRecordMapper {
         break;
       case ResumeTimerCommand():
         break;
-      case SkipRestCommand value:
-        payload['nextCycleId'] = value.nextCycleId;
-        payload['nextCycleConfig'] = _configToJson(value.nextCycleConfig);
       case CompleteRestCommand value:
         payload['nextCycleId'] = value.nextCycleId;
         payload['nextCycleConfig'] = _configToJson(value.nextCycleConfig);
@@ -161,11 +157,12 @@ abstract final class TimerRecordMapper {
         expectedPhase: common.expectedPhase,
         expectedRevision: common.expectedRevision,
       ),
-      'skipRest' => SkipRestCommand(
+      // A pre-change inbox row may still contain a skip action. Do not
+      // execute that removed behavior after upgrade; safely terminate the
+      // current timer instead while preserving inbox recovery.
+      'skipRest' => StopTimerCommand(
         commandId: common.commandId,
         occurredAtUtc: common.occurredAtUtc,
-        nextCycleId: payload['nextCycleId']! as String,
-        nextCycleConfig: _configFromJson(payload['nextCycleConfig']),
         expectedCycleId: common.expectedCycleId,
         expectedPhase: common.expectedPhase,
         expectedRevision: common.expectedRevision,
