@@ -57,6 +57,7 @@ final class LocalNotificationGateway implements NotificationGateway {
     tz_data.initializeTimeZones();
     final settings = await _settingsRepository.load();
     final strings = _stringsFor(settings);
+    final windowsIconPath = _windowsNotificationIconPath();
     final darwin = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -94,7 +95,7 @@ final class LocalNotificationGateway implements NotificationGateway {
         appName: strings.appTitle,
         appUserModelId: 'RestEye.RestEye',
         guid: _windowsGuid,
-        iconPath: Platform.resolvedExecutable,
+        iconPath: windowsIconPath,
       ),
     );
     await _plugin.initialize(
@@ -108,6 +109,17 @@ final class LocalNotificationGateway implements NotificationGateway {
     if (launchDetails?.didNotificationLaunchApp == true && response != null) {
       _launchAction = _parseResponse(response);
     }
+  }
+
+  String? _windowsNotificationIconPath() {
+    if (defaultTargetPlatform != TargetPlatform.windows) return null;
+    final executableDirectory = File(Platform.resolvedExecutable).parent;
+    final icon = File.fromUri(
+      executableDirectory.uri.resolve(
+        'data/flutter_assets/assets/brand/resteye_icon.png',
+      ),
+    );
+    return icon.existsSync() ? icon.path : null;
   }
 
   @override
