@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:rest_eye/core/clock/app_clock.dart';
 import 'package:rest_eye/core/logging/app_logger.dart';
 import 'package:rest_eye/features/settings/domain/app_settings.dart';
@@ -11,6 +12,7 @@ import 'package:rest_eye/features/timer/domain/timer_phase.dart';
 import 'package:rest_eye/features/timer/domain/timer_policy.dart';
 import 'package:rest_eye/features/timer/domain/timer_reducer.dart';
 import 'package:rest_eye/features/timer/domain/timer_snapshot.dart';
+import 'package:rest_eye/platform/notifications/local_notification_gateway.dart';
 
 void main() {
   final restStartedAt = DateTime.utc(2026, 9, 4, 8);
@@ -182,6 +184,7 @@ void main() {
       expect(plan.items.single.kind, NotificationKind.restComplete);
       expect(plan.items.single.scheduledAtUtc, restDeadline);
       expect(plan.items.single.expectedPhase, TimerPhase.awaitingWork);
+      expect(plan.items.single.hasStartWorkAction, isTrue);
 
       final awaitingWork = TimerReducer.reduce(
         _restingSnapshot(config, restStartedAt),
@@ -205,6 +208,7 @@ void main() {
         restDeadline.add(const Duration(minutes: 1)),
         restDeadline.add(const Duration(minutes: 2)),
       ]);
+      expect(repeatPlan.items.every((item) => item.hasStartWorkAction), isTrue);
     });
 
     test('work reminder is sent for every rest completion behavior', () {
@@ -237,7 +241,32 @@ void main() {
           restStartedAt.add(config.restDuration),
           reason: 'rest completion behavior: ${behavior.name}',
         );
+        expect(
+          plan.items.single.hasStartWorkAction,
+          behavior == RestCompletionBehavior.continueRest,
+          reason: 'rest completion behavior: ${behavior.name}',
+        );
       }
+    });
+
+    test('start work notification action is parsed', () {
+      final action = parseLocalNotificationActionResponse(
+        const NotificationResponse(
+          notificationResponseType:
+              NotificationResponseType.selectedNotificationAction,
+          actionId: 'startWork',
+          payload:
+              '{"cycleId":"cycle","expectedPhase":"awaitingWork",'
+              '"expectedRevision":2}',
+        ),
+        _FakeClock(restStartedAt),
+      );
+
+      expect(action, isNotNull);
+      expect(action!.type, NotificationActionType.startWork);
+      expect(action.cycleId, 'cycle');
+      expect(action.expectedPhase, TimerPhase.awaitingWork);
+      expect(action.expectedRevision, 2);
     });
   });
 }

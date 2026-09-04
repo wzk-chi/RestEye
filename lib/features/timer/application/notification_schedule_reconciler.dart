@@ -199,6 +199,7 @@ final class NotificationScheduleReconciler {
                 scheduledAtUtc: deadline,
                 vibrationEnabled: vibrationEnabled,
                 hasRestActions: true,
+                hasStartWorkAction: false,
               ),
             );
           } else {
@@ -225,6 +226,7 @@ final class NotificationScheduleReconciler {
                 scheduledAtUtc: reminder,
                 vibrationEnabled: vibrationEnabled,
                 hasRestActions: true,
+                hasStartWorkAction: false,
               ),
             );
           } else {
@@ -253,6 +255,9 @@ final class NotificationScheduleReconciler {
                 scheduledAtUtc: deadline,
                 vibrationEnabled: vibrationEnabled,
                 hasRestActions: false,
+                hasStartWorkAction:
+                    snapshot.cycleConfig.restCompletionBehavior ==
+                    RestCompletionBehavior.continueRest,
               ),
             );
           } else {
@@ -278,6 +283,7 @@ final class NotificationScheduleReconciler {
                 scheduledAtUtc: reminder,
                 vibrationEnabled: vibrationEnabled,
                 hasRestActions: false,
+                hasStartWorkAction: true,
               ),
             );
           } else {

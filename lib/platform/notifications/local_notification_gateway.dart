@@ -24,7 +24,9 @@ final class LocalNotificationGateway implements NotificationGateway {
 
   static const _startRestAction = 'startRest';
   static const _skipRestAction = 'skipRest';
+  static const _startWorkAction = 'startWork';
   static const _restCategory = 'restEyeRestActions';
+  static const _workCategory = 'restEyeWorkActions';
   static const _windowsGuid = 'f9bd2cd7-4f6c-4a16-b65d-2fbe306b77ef';
 
   final SettingsRepository _settingsRepository;
@@ -70,6 +72,15 @@ final class LocalNotificationGateway implements NotificationGateway {
             DarwinNotificationAction.plain(
               _skipRestAction,
               strings.notificationActionSkipRest,
+            ),
+          ],
+        ),
+        DarwinNotificationCategory(
+          _workCategory,
+          actions: [
+            DarwinNotificationAction.plain(
+              _startWorkAction,
+              strings.actionStartWork,
             ),
           ],
         ),
@@ -217,6 +228,14 @@ final class LocalNotificationGateway implements NotificationGateway {
               showsUserInterface: false,
             ),
           ]
+        : notification.hasStartWorkAction
+        ? [
+            AndroidNotificationAction(
+              _startWorkAction,
+              strings.actionStartWork,
+              showsUserInterface: false,
+            ),
+          ]
         : const <AndroidNotificationAction>[];
     final windowsActions = notification.hasRestActions
         ? [
@@ -229,7 +248,19 @@ final class LocalNotificationGateway implements NotificationGateway {
               arguments: _windowsActionPayload(_skipRestAction, notification),
             ),
           ]
+        : notification.hasStartWorkAction
+        ? [
+            WindowsAction(
+              content: strings.actionStartWork,
+              arguments: _windowsActionPayload(_startWorkAction, notification),
+            ),
+          ]
         : const <WindowsAction>[];
+    final darwinCategory = notification.hasRestActions
+        ? _restCategory
+        : notification.hasStartWorkAction
+        ? _workCategory
+        : null;
     final channelSuffix = notification.vibrationEnabled ? 'vibration' : 'quiet';
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -249,12 +280,8 @@ final class LocalNotificationGateway implements NotificationGateway {
         timeoutAfter: null,
         actions: androidActions,
       ),
-      iOS: DarwinNotificationDetails(
-        categoryIdentifier: notification.hasRestActions ? _restCategory : null,
-      ),
-      macOS: DarwinNotificationDetails(
-        categoryIdentifier: notification.hasRestActions ? _restCategory : null,
-      ),
+      iOS: DarwinNotificationDetails(categoryIdentifier: darwinCategory),
+      macOS: DarwinNotificationDetails(categoryIdentifier: darwinCategory),
       windows: WindowsNotificationDetails(
         duration: WindowsNotificationDuration.long,
         actions: windowsActions,
@@ -495,6 +522,8 @@ NotificationActionRequest? parseLocalNotificationActionResponse(
         NotificationActionType.startRest,
       LocalNotificationGateway._skipRestAction =>
         NotificationActionType.skipRest,
+      LocalNotificationGateway._startWorkAction =>
+        NotificationActionType.startWork,
       _ => null,
     };
     if (type == null) return null;

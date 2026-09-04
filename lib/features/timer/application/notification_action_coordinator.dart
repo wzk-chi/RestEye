@@ -81,6 +81,15 @@ final class NotificationActionCoordinator {
         nextCycleId: _dispatcher.createId('cycle'),
         nextCycleConfig: timerCycleConfigFromSettings(settings),
       ),
+      NotificationActionType.startWork => CompleteRestCommand(
+        commandId: action.commandId,
+        occurredAtUtc: action.occurredAtUtc,
+        expectedCycleId: action.cycleId,
+        expectedPhase: action.expectedPhase,
+        expectedRevision: action.expectedRevision,
+        nextCycleId: _dispatcher.createId('cycle'),
+        nextCycleConfig: timerCycleConfigFromSettings(settings),
+      ),
     };
   }
 

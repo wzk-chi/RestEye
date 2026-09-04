@@ -3,7 +3,7 @@ import 'package:rest_eye/features/settings/domain/app_settings.dart';
 
 enum NotificationKind { workComplete, restReminder, restComplete }
 
-enum NotificationActionType { startRest, skipRest }
+enum NotificationActionType { startRest, skipRest, startWork }
 
 enum NotificationPermissionStatus {
   granted,
@@ -22,6 +22,7 @@ final class ScheduledNotification {
     required this.scheduledAtUtc,
     required this.vibrationEnabled,
     required this.hasRestActions,
+    required this.hasStartWorkAction,
   });
 
   final int id;
@@ -32,6 +33,7 @@ final class ScheduledNotification {
   final DateTime scheduledAtUtc;
   final bool vibrationEnabled;
   final bool hasRestActions;
+  final bool hasStartWorkAction;
 }
 
 final class NotificationActionRequest {
