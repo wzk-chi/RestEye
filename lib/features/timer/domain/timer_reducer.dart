@@ -604,7 +604,6 @@ abstract final class TimerReducer {
       snapshot: snapshot,
       events: List.unmodifiable(events),
       outcome: TimerTransitionOutcome.applied,
-      notificationIntent: NotificationIntent.reconcile,
     );
   }
 }

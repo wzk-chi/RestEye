@@ -60,8 +60,7 @@ final class NotificationActionCoordinator {
 
   Future<bool> _dispatch(NotificationActionRequest action) async {
     try {
-      final expiresAt = action.expiresAtUtc;
-      if (expiresAt != null && action.occurredAtUtc.isAfter(expiresAt)) {
+      if (action.occurredAtUtc.isAfter(action.expiresAtUtc)) {
         // Do not enqueue an already-expired action. The next reconciliation
         // owns cancellation of the obsolete notification and no offline time
         // is fed into the timer reducer.
@@ -93,14 +92,12 @@ final class NotificationActionCoordinator {
         occurredAtUtc: action.occurredAtUtc,
         expectedCycleId: action.cycleId,
         expectedPhase: action.expectedPhase,
-        expectedRevision: action.expectedRevision,
       ),
       NotificationActionType.skipRest => SkipRestCommand(
         commandId: action.commandId,
         occurredAtUtc: action.occurredAtUtc,
         expectedCycleId: action.cycleId,
         expectedPhase: action.expectedPhase,
-        expectedRevision: action.expectedRevision,
         nextCycleId: _dispatcher.createId('cycle'),
         nextCycleConfig: timerCycleConfigFromSettings(settings),
       ),
@@ -109,7 +106,6 @@ final class NotificationActionCoordinator {
         occurredAtUtc: action.occurredAtUtc,
         expectedCycleId: action.cycleId,
         expectedPhase: action.expectedPhase,
-        expectedRevision: action.expectedRevision,
         nextCycleId: _dispatcher.createId('cycle'),
         nextCycleConfig: timerCycleConfigFromSettings(settings),
       ),

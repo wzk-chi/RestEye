@@ -15,6 +15,7 @@ import 'package:rest_eye/features/statistics/application/statistics_dependencies
 import 'package:rest_eye/features/statistics/data/drift_statistics_repository.dart';
 import 'package:rest_eye/features/timer/application/notification_action_coordinator.dart';
 import 'package:rest_eye/features/timer/application/notification_schedule_reconciler.dart';
+import 'package:rest_eye/features/timer/application/notification_settings_mapper.dart';
 import 'package:rest_eye/features/timer/application/timer_command_dispatcher.dart';
 import 'package:rest_eye/features/timer/application/timer_dependencies.dart';
 import 'package:rest_eye/features/timer/application/timer_runtime.dart';

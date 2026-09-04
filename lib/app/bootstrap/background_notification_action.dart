@@ -7,6 +7,7 @@ import 'package:rest_eye/core/logging/app_logger.dart';
 import 'package:rest_eye/features/settings/data/drift_settings_repository.dart';
 import 'package:rest_eye/features/timer/application/notification_action_coordinator.dart';
 import 'package:rest_eye/features/timer/application/notification_schedule_reconciler.dart';
+import 'package:rest_eye/features/timer/application/notification_settings_mapper.dart';
 import 'package:rest_eye/features/timer/application/timer_command_dispatcher.dart';
 import 'package:rest_eye/features/timer/data/drift_timer_repository.dart';
 import 'package:rest_eye/infrastructure/database/app_database.dart';

@@ -304,7 +304,6 @@ final class LocalNotificationGateway
       'notificationId': notification.id,
       'cycleId': notification.cycleId,
       'expectedPhase': notification.expectedPhase.name,
-      'expectedRevision': notification.expectedRevision,
       'expiresAtUtc': notification.expiresAtUtc.toUtc().toIso8601String(),
     });
     final androidActions = notification.hasRestActions
@@ -576,7 +575,6 @@ final class LocalNotificationGateway
       'notificationId': notification.id,
       'cycleId': notification.cycleId,
       'expectedPhase': notification.expectedPhase.name,
-      'expectedRevision': notification.expectedRevision,
       'expiresAtUtc': notification.expiresAtUtc.toUtc().toIso8601String(),
     });
   }
@@ -634,15 +632,16 @@ NotificationActionRequest? parseLocalNotificationActionResponse(
     final notificationId =
         response.id ?? (json['notificationId'] as num?)?.toInt();
     if (notificationId == null) return null;
+    final expiresAtUtc = _parseUtc(json['expiresAtUtc']);
+    if (expiresAtUtc == null) return null;
     return NotificationActionRequest(
       commandId: 'notification-${json['cycleId']}-$notificationId-$typeCode',
       notificationId: notificationId,
       type: type,
       cycleId: json['cycleId']! as String,
       expectedPhase: TimerPhase.values.byName(json['expectedPhase']! as String),
-      expectedRevision: json['expectedRevision']! as int,
       occurredAtUtc: now,
-      expiresAtUtc: _parseUtc(json['expiresAtUtc']),
+      expiresAtUtc: expiresAtUtc,
     );
   } on FormatException {
     return null;

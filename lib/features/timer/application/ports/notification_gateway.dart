@@ -35,7 +35,6 @@ final class ScheduledNotification {
     required this.kind,
     required this.cycleId,
     required this.expectedPhase,
-    required this.expectedRevision,
     required this.scheduledAtUtc,
     required this.expiresAtUtc,
     required this.vibrationEnabled,
@@ -47,7 +46,6 @@ final class ScheduledNotification {
   final NotificationKind kind;
   final String cycleId;
   final TimerPhase expectedPhase;
-  final int expectedRevision;
   final DateTime scheduledAtUtc;
 
   /// Last instant at which an action from this notification can affect the
@@ -65,9 +63,8 @@ final class NotificationActionRequest {
     required this.type,
     required this.cycleId,
     required this.expectedPhase,
-    required this.expectedRevision,
     required this.occurredAtUtc,
-    this.expiresAtUtc,
+    required this.expiresAtUtc,
   });
 
   final String commandId;
@@ -75,9 +72,8 @@ final class NotificationActionRequest {
   final NotificationActionType type;
   final String cycleId;
   final TimerPhase expectedPhase;
-  final int expectedRevision;
   final DateTime occurredAtUtc;
-  final DateTime? expiresAtUtc;
+  final DateTime expiresAtUtc;
 }
 
 abstract interface class NotificationGateway {
