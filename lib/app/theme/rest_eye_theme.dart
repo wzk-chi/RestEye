@@ -64,7 +64,7 @@ abstract final class RestEyeTheme {
       ),
       navigationRailTheme: const NavigationRailThemeData(
         minWidth: 80,
-        groupAlignment: -0.82,
+        groupAlignment: 0,
         labelType: NavigationRailLabelType.all,
       ),
     );
