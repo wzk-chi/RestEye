@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:rest_eye/core/async/serial_operation_queue.dart';
 import 'package:rest_eye/core/clock/app_clock.dart';
 import 'package:rest_eye/core/logging/app_logger.dart';
+import 'package:rest_eye/features/settings/domain/app_settings.dart';
 import 'package:rest_eye/features/settings/domain/settings_repository.dart';
 import 'package:rest_eye/features/timer/application/ports/notification_gateway.dart';
 import 'package:rest_eye/features/timer/application/ports/platform_capabilities.dart';
@@ -15,6 +17,16 @@ final class NotificationPlan {
 
   final List<ScheduledNotification> items;
   final bool truncated;
+}
+
+NotificationPresentationOptions notificationPresentationOptions(
+  AppSettings settings,
+) {
+  return NotificationPresentationOptions(
+    localeCode: settings.localePreference == AppLocalePreference.system
+        ? null
+        : settings.localePreference.name,
+  );
 }
 
 final class NotificationScheduleReconciler {
@@ -33,7 +45,7 @@ final class NotificationScheduleReconciler {
   final AppClock _clock;
   final _availability = StreamController<CapabilityAvailability>.broadcast();
   final _deliveryFencedIds = <int>{};
-  Future<void> _tail = Future.value();
+  final _queue = SerialOperationQueue();
   var _generation = 0;
   var _disposed = false;
   CapabilityAvailability _currentAvailability =
@@ -49,16 +61,13 @@ final class NotificationScheduleReconciler {
   }) {
     if (_disposed) return Future.value();
     final generation = ++_generation;
-    final operation = _tail.then(
-      (_) => _reconcile(
+    final operation = _queue.run(
+      () => _reconcile(
         snapshot,
         previousSnapshot: previousSnapshot,
         forceReschedule: forceReschedule,
         generation: generation,
       ),
-    );
-    _tail = operation.then<void>(
-      (_) {},
       onError: (Object error, StackTrace stackTrace) {
         _logger.warning(
           'Notification reconciliation queue failed',
@@ -102,6 +111,12 @@ final class NotificationScheduleReconciler {
       final desired = plan.items;
       final desiredById = {for (final item in desired) item.id: item};
       final existingIds = {...pendingIds, ...activeIds};
+      // Claimed (acted-on) notifications are excluded from the due protection:
+      // once their command has been claimed for processing, the reconcile that
+      // commits or rejects the command is responsible for cancelling them, so
+      // a used reminder never lingers in the notification shade until the next
+      // phase transition.
+      final claimedIds = _gateway.claimedActionNotificationIds;
       final duePrevious = _dueNotifications(
         requestedSnapshotIsCurrent ? previousSnapshot : null,
         vibrationEnabled: settings.androidVibrationEnabled,
@@ -110,7 +125,10 @@ final class NotificationScheduleReconciler {
         missedRestReminderEnabled: settings.missedRestReminderEnabled,
         missedWorkReminderEnabled: settings.missedWorkReminderEnabled,
       );
-      final duePreviousIds = duePrevious.map((item) => item.id).toSet();
+      final duePreviousIds = duePrevious
+          .map((item) => item.id)
+          .where((id) => !claimedIds.contains(id))
+          .toSet();
       final obsoleteIds = existingIds
           .difference(desiredById.keys.toSet())
           .difference(duePreviousIds);
@@ -127,7 +145,10 @@ final class NotificationScheduleReconciler {
           activeIds: activeIds,
           activeQueryIsAuthoritative: activeQueryIsAuthoritative,
         )) {
-          await _gateway.schedule(notification, settings: settings);
+          await _gateway.schedule(
+            notification,
+            presentation: notificationPresentationOptions(settings),
+          );
           _deliveryFencedIds.add(notification.id);
         }
       }
@@ -146,7 +167,10 @@ final class NotificationScheduleReconciler {
               activeQueryIsAuthoritative: activeQueryIsAuthoritative,
             ) ||
             (forceReschedule && isPending && isFuture)) {
-          await _gateway.schedule(notification, settings: settings);
+          await _gateway.schedule(
+            notification,
+            presentation: notificationPresentationOptions(settings),
+          );
           _deliveryFencedIds.add(notification.id);
         }
       }
@@ -253,6 +277,9 @@ final class NotificationScheduleReconciler {
                 expectedPhase: TimerPhase.awaitingRest,
                 expectedRevision: snapshot.revision + 1,
                 scheduledAtUtc: deadline,
+                expiresAtUtc: deadline.add(
+                  snapshot.cycleConfig.reminderTimeout,
+                ),
                 vibrationEnabled: vibrationEnabled,
                 hasRestActions: true,
                 hasStartWorkAction: false,
@@ -262,16 +289,50 @@ final class NotificationScheduleReconciler {
             truncated = true;
           }
         }
+        if (deadline != null) {
+          // Pre-schedule the finite waiting window as well. The native alarm
+          // can still display missed-rest reminders while the Dart isolate is
+          // backgrounded or reclaimed; the next foreground reconciliation
+          // will commit the corresponding phase transitions.
+          final timeout = deadline.add(snapshot.cycleConfig.reminderTimeout);
+          var reminder = deadline.add(snapshot.cycleConfig.reminderInterval);
+          var occurrence = 0;
+          while (missedRestReminderEnabled && reminder.isBefore(timeout)) {
+            if (occurrence + 1 < capacity) {
+              result.add(
+                ScheduledNotification(
+                  id: _notificationId(
+                    snapshot.cycleId,
+                    'restReminder',
+                    reminder,
+                  ),
+                  kind: NotificationKind.restReminder,
+                  cycleId: snapshot.cycleId,
+                  expectedPhase: TimerPhase.awaitingRest,
+                  expectedRevision: snapshot.revision + occurrence + 2,
+                  scheduledAtUtc: reminder,
+                  expiresAtUtc: timeout,
+                  vibrationEnabled: vibrationEnabled,
+                  hasRestActions: true,
+                  hasStartWorkAction: false,
+                ),
+              );
+            } else {
+              truncated = true;
+            }
+            reminder = reminder.add(snapshot.cycleConfig.reminderInterval);
+            occurrence++;
+          }
+        }
       case TimerPhase.awaitingRest:
         final timeout = snapshot.deadlineAtUtc;
         var reminder = snapshot.nextReminderAtUtc;
         var occurrence = 0;
-        final reminderCapacity = capacity > 0 ? capacity - 1 : 0;
         while (missedRestReminderEnabled &&
             timeout != null &&
             reminder != null &&
             reminder.isBefore(timeout)) {
-          if (occurrence < reminderCapacity) {
+          if (occurrence < capacity) {
             result.add(
               ScheduledNotification(
                 id: _notificationId(snapshot.cycleId, 'restReminder', reminder),
@@ -280,6 +341,7 @@ final class NotificationScheduleReconciler {
                 expectedPhase: TimerPhase.awaitingRest,
                 expectedRevision: snapshot.revision + occurrence + 1,
                 scheduledAtUtc: reminder,
+                expiresAtUtc: timeout,
                 vibrationEnabled: vibrationEnabled,
                 hasRestActions: true,
                 hasStartWorkAction: false,
@@ -309,6 +371,7 @@ final class NotificationScheduleReconciler {
                     },
                 expectedRevision: snapshot.revision + 1,
                 scheduledAtUtc: deadline,
+                expiresAtUtc: deadline.add(snapshot.cycleConfig.restTimeout),
                 vibrationEnabled: vibrationEnabled,
                 hasRestActions: false,
                 hasStartWorkAction:
@@ -318,6 +381,42 @@ final class NotificationScheduleReconciler {
             );
           } else {
             truncated = true;
+          }
+          if (snapshot.cycleConfig.restCompletionBehavior ==
+              RestCompletionBehavior.continueRest) {
+            final timeout = deadline.add(snapshot.cycleConfig.restTimeout);
+            var reminder = deadline.add(
+              snapshot.cycleConfig.missedWorkReminderInterval,
+            );
+            var occurrence = 0;
+            while (missedWorkReminderEnabled && reminder.isBefore(timeout)) {
+              if (occurrence + 1 < capacity) {
+                result.add(
+                  ScheduledNotification(
+                    id: _notificationId(
+                      snapshot.cycleId,
+                      'workReminder',
+                      reminder,
+                    ),
+                    kind: NotificationKind.restComplete,
+                    cycleId: snapshot.cycleId,
+                    expectedPhase: TimerPhase.awaitingWork,
+                    expectedRevision: snapshot.revision + occurrence + 2,
+                    scheduledAtUtc: reminder,
+                    expiresAtUtc: timeout,
+                    vibrationEnabled: vibrationEnabled,
+                    hasRestActions: false,
+                    hasStartWorkAction: true,
+                  ),
+                );
+              } else {
+                truncated = true;
+              }
+              reminder = reminder.add(
+                snapshot.cycleConfig.missedWorkReminderInterval,
+              );
+              occurrence++;
+            }
           }
         }
       case TimerPhase.awaitingWork:
@@ -337,6 +436,7 @@ final class NotificationScheduleReconciler {
                 expectedPhase: TimerPhase.awaitingWork,
                 expectedRevision: snapshot.revision + occurrence + 1,
                 scheduledAtUtc: reminder,
+                expiresAtUtc: timeout,
                 vibrationEnabled: vibrationEnabled,
                 hasRestActions: false,
                 hasStartWorkAction: true,
@@ -372,7 +472,7 @@ final class NotificationScheduleReconciler {
     if (_disposed) return;
     _disposed = true;
     _generation++;
-    await _tail;
+    await _queue.idle;
     _deliveryFencedIds.clear();
     await _availability.close();
   }

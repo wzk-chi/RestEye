@@ -38,6 +38,48 @@ final class TimerSnapshot {
   final DateTime? nextReminderAtUtc;
   final TimerCycleConfig cycleConfig;
 
+  /// Validates the persisted state-machine invariants at the data boundary.
+  ///
+  /// Keeping this check on the domain model prevents a malformed row from
+  /// entering the reducer and becoming a timer that can never advance.
+  void validateInvariant() {
+    if (revision < 0) {
+      throw const FormatException('Timer snapshot revision is negative');
+    }
+    if (!startedAtUtc.isUtc) {
+      throw const FormatException('Timer snapshot start time is not UTC');
+    }
+    final deadline = deadlineAtUtc;
+    final reminder = nextReminderAtUtc;
+    if (phase == TimerPhase.idle) {
+      if (executionStatus != ExecutionStatus.active ||
+          deadline != null ||
+          reminder != null) {
+        throw const FormatException('Idle timer snapshot has active fields');
+      }
+      return;
+    }
+    if (executionStatus == ExecutionStatus.suspended &&
+        phase != TimerPhase.working) {
+      throw const FormatException('Only a working timer may be suspended');
+    }
+    if (deadline == null) {
+      throw const FormatException('Active timer snapshot has no deadline');
+    }
+    if (deadline.isBefore(startedAtUtc)) {
+      throw const FormatException('Timer deadline precedes its start');
+    }
+    if (phase == TimerPhase.working || phase == TimerPhase.resting) {
+      if (reminder != null) {
+        throw const FormatException('Running timer snapshot has a reminder');
+      }
+      return;
+    }
+    if (reminder != null && !reminder.isBefore(deadline)) {
+      throw const FormatException('Reminder is not before timer deadline');
+    }
+  }
+
   bool get isActive => phase != TimerPhase.idle;
 
   Duration get phaseDuration => switch (phase) {
@@ -47,6 +89,19 @@ final class TimerSnapshot {
     TimerPhase.resting => cycleConfig.restDuration,
     TimerPhase.awaitingWork => cycleConfig.restTimeout,
   };
+
+  /// When the next reconciliation is due: the phase deadline, or the earlier
+  /// of deadline and next reminder in the awaiting phases. Null when idle or
+  /// suspended.
+  DateTime? get nextDueAtUtc {
+    if (executionStatus == ExecutionStatus.suspended) return null;
+    return switch (phase) {
+      TimerPhase.idle => null,
+      TimerPhase.working || TimerPhase.resting => deadlineAtUtc,
+      TimerPhase.awaitingRest ||
+      TimerPhase.awaitingWork => _earlier(deadlineAtUtc, nextReminderAtUtc),
+    };
+  }
 
   Duration remainingAt(DateTime nowUtc) {
     final deadline = deadlineAtUtc;
@@ -95,6 +150,21 @@ final class TimerSnapshot {
     return remaining;
   }
 
+  /// The cumulative work/rest duration the UI should display as "elapsed"
+  /// for the current phase at [nowUtc].
+  Duration displayElapsedAt(DateTime nowUtc) {
+    final remaining = remainingAt(nowUtc);
+    if (phase == TimerPhase.awaitingRest || phase == TimerPhase.awaitingWork) {
+      final display = displayDurationForRemaining(remaining);
+      return display.isNegative ? Duration.zero : display;
+    }
+    if (isContinuingRestAt(nowUtc)) {
+      return continuingRestDurationAt(nowUtc);
+    }
+    final elapsed = phaseDuration - remaining;
+    return elapsed.isNegative ? Duration.zero : elapsed;
+  }
+
   bool isContinuingRestAt(DateTime nowUtc) {
     final deadline = deadlineAtUtc;
     return phase == TimerPhase.resting &&
@@ -107,5 +177,11 @@ final class TimerSnapshot {
     final elapsed = nowUtc.toUtc().difference(startedAtUtc.toUtc());
     final safeElapsed = elapsed.isNegative ? Duration.zero : elapsed;
     return safeElapsed;
+  }
+
+  static DateTime? _earlier(DateTime? first, DateTime? second) {
+    if (first == null) return second;
+    if (second == null) return first;
+    return first.isBefore(second) ? first : second;
   }
 }

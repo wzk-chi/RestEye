@@ -41,6 +41,8 @@ class FlutterWindow : public Win32Window {
       window_behavior_method_channel_;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       notification_identity_method_channel_;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      app_exit_method_channel_;
   std::unique_ptr<flutter::EventChannel<flutter::EncodableValue>>
       window_behavior_event_channel_;
   std::unique_ptr<flutter::EventSink<flutter::EncodableValue>>
@@ -71,6 +73,7 @@ class FlutterWindow : public Win32Window {
 
   bool minimize_to_tray_on_close_ = true;
   bool close_requested_ = false;
+  bool exit_prepared_ = false;
   bool tray_icon_added_ = false;
   bool tray_labels_ready_ = false;
   HWND tray_window_handle_ = nullptr;

@@ -1,10 +1,9 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
-import 'package:rest_eye/core/build/app_build.dart';
+import 'package:rest_eye/core/config/app_build.dart';
 import 'package:rest_eye/infrastructure/database/tables/activity_events_table.dart';
 import 'package:rest_eye/infrastructure/database/tables/app_settings_table.dart';
 import 'package:rest_eye/infrastructure/database/tables/pending_commands_table.dart';
-import 'package:rest_eye/infrastructure/database/tables/screen_activity_state_table.dart';
 import 'package:rest_eye/infrastructure/database/tables/timer_snapshots_table.dart';
 
 part 'app_database.g.dart';
@@ -15,7 +14,6 @@ part 'app_database.g.dart';
     TimerSnapshotsTable,
     PendingCommandsTable,
     ActivityEventsTable,
-    ScreenActivityStateTable,
   ],
 )
 final class AppDatabase extends _$AppDatabase {
@@ -46,9 +44,9 @@ final class AppDatabase extends _$AppDatabase {
           timerSnapshotsTable.timeoutBehavior,
         );
       }
-      if (from < 3) {
-        await migrator.createTable(screenActivityStateTable);
-      }
+      // screen_activity_state (v3) left the managed schema when lit-screen
+      // tracking was removed; existing databases keep the physical table as a
+      // harmless orphan and historical screenOnInterval event rows are kept.
       if (from < 4) {
         await migrator.addColumn(
           appSettingsTable,

@@ -23,6 +23,10 @@ final class AppSettingsChangeEffects implements SettingsChangeEffects {
 
   @override
   Future<void> apply(AppSettings previous, AppSettings current) async {
+    // Product decision: duration changes stop the active timer. Keeping it
+    // running with the old snapshot would make the displayed time disagree
+    // with the new setting (or look unchanged), so the UI confirms with the
+    // user before saving and the stop is applied on save.
     final timerDurationChanged =
         previous.workDuration != current.workDuration ||
         previous.restDuration != current.restDuration;

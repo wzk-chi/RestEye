@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:rest_eye/core/async/serial_operation_queue.dart';
 import 'package:rest_eye/core/clock/app_clock.dart';
 import 'package:rest_eye/core/logging/app_logger.dart';
 import 'package:rest_eye/features/settings/domain/settings_repository.dart';
@@ -26,7 +27,7 @@ final class ScreenLockPauseController {
   final AppLogger _logger;
   StreamSubscription<ScreenStateChange>? _screenSubscription;
   StreamSubscription<TimerSnapshot>? _snapshotSubscription;
-  Future<void> _tail = Future.value();
+  final _queue = SerialOperationQueue();
   ScreenState _screenState = ScreenState.unknown;
   var _pauseWhenLocked = false;
   var _started = false;
@@ -178,14 +179,12 @@ final class ScreenLockPauseController {
   }
 
   Future<void> _enqueue(Future<void> Function() action) {
-    final operation = _tail.then((_) => action());
-    _tail = operation.then<void>(
-      (_) {},
+    return _queue.run(
+      action,
       onError: (Object error, StackTrace stackTrace) {
         _logger.warning('Screen lock pause command failed', error: error);
       },
     );
-    return operation;
   }
 
   Future<void> dispose() async {
@@ -197,6 +196,6 @@ final class ScreenLockPauseController {
     _snapshotSubscription = null;
     await screenSubscription?.cancel();
     await snapshotSubscription?.cancel();
-    await _tail;
+    await _queue.idle;
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:rest_eye/core/async/serial_operation_queue.dart';
 import 'package:rest_eye/core/clock/app_clock.dart';
 import 'package:rest_eye/core/logging/app_logger.dart';
 import 'package:rest_eye/features/settings/domain/settings_repository.dart';
@@ -26,7 +27,7 @@ final class TimerCommandDispatcher {
   final AppLogger _logger;
   final NotificationScheduleReconciler? _notificationReconciler;
   final _snapshots = StreamController<TimerSnapshot>.broadcast();
-  Future<void> _tail = Future.value();
+  final _queue = SerialOperationQueue();
   TimerSnapshot _current = TimerSnapshot.idle();
   var _idCounter = 0;
 
@@ -45,12 +46,18 @@ final class TimerCommandDispatcher {
   Future<TimerTransition> dispatch(
     TimerCommand command, {
     bool fromInbox = false,
+    bool skipPreReconcile = false,
+    bool preservePreviousNotifications = true,
+    DateTime? maxReconcileAtUtc,
   }) {
-    final operation = _tail.then(
-      (_) => _execute(command, fromInbox: fromInbox),
-    );
-    _tail = operation.then<void>(
-      (_) {},
+    return _queue.run(
+      () => _execute(
+        command,
+        fromInbox: fromInbox,
+        skipPreReconcile: skipPreReconcile,
+        preservePreviousNotifications: preservePreviousNotifications,
+        maxReconcileAtUtc: maxReconcileAtUtc,
+      ),
       onError: (Object error, StackTrace stackTrace) {
         _logger.error(
           'Timer command failed',
@@ -59,7 +66,6 @@ final class TimerCommandDispatcher {
         );
       },
     );
-    return operation;
   }
 
   Future<void> recover() async {
@@ -80,16 +86,15 @@ final class TimerCommandDispatcher {
   }
 
   Future<TimerSnapshot> refreshFromRepository() {
-    final operation = _tail.then((_) async {
-      final durable = await _repository.loadSnapshot();
-      if (durable.revision != _current.revision ||
-          durable.cycleId != _current.cycleId) {
-        _publish(durable);
-      }
-      return durable;
-    });
-    _tail = operation.then<void>(
-      (_) {},
+    return _queue.run(
+      () async {
+        final durable = await _repository.loadSnapshot();
+        if (durable.revision != _current.revision ||
+            durable.cycleId != _current.cycleId) {
+          _publish(durable);
+        }
+        return durable;
+      },
       onError: (Object error, StackTrace stackTrace) {
         _logger.error(
           'Timer snapshot refresh failed',
@@ -98,7 +103,6 @@ final class TimerCommandDispatcher {
         );
       },
     );
-    return operation;
   }
 
   Future<void> stopIfActive({
@@ -110,8 +114,32 @@ final class TimerCommandDispatcher {
     // shutdown decision from this isolate's cached snapshot.
     final durable = await refreshFromRepository();
     if (!durable.isActive) return;
+    await _stopActive(
+      durable,
+      source: source,
+      occurredAtUtc: occurredAtUtc ?? _clock.utcNow,
+    );
+  }
+
+  Future<void> stopAbandonedTimer({required String source}) async {
+    final durable = await refreshFromRepository();
+    if (!durable.isActive) return;
+    await _stopActive(
+      durable,
+      source: source,
+      occurredAtUtc: durable.startedAtUtc,
+      cancelPreviousNotifications: true,
+    );
+  }
+
+  Future<void> _stopActive(
+    TimerSnapshot durable, {
+    required String source,
+    required DateTime occurredAtUtc,
+    bool cancelPreviousNotifications = false,
+  }) async {
     final now = _clock.utcNow;
-    var stoppedAt = occurredAtUtc ?? now;
+    var stoppedAt = occurredAtUtc;
     if (stoppedAt.isBefore(durable.startedAtUtc)) {
       stoppedAt = durable.startedAtUtc;
     }
@@ -121,28 +149,28 @@ final class TimerCommandDispatcher {
         commandId: createId('stop-$source'),
         occurredAtUtc: stoppedAt,
       ),
+      skipPreReconcile: cancelPreviousNotifications,
+      preservePreviousNotifications: !cancelPreviousNotifications,
     );
-  }
-
-  Future<void> stopAbandonedTimer({required String source}) async {
-    final durable = await refreshFromRepository();
-    if (!durable.isActive) return;
-    await stopIfActive(source: source, occurredAtUtc: durable.startedAtUtc);
   }
 
   Future<TimerTransition> _execute(
     TimerCommand command, {
     required bool fromInbox,
+    required bool skipPreReconcile,
+    required bool preservePreviousNotifications,
+    required DateTime? maxReconcileAtUtc,
   }) async {
     final settings = await _settingsRepository.load();
     var durable = await _repository.loadSnapshot();
 
-    if (command is! ReconcileTimerCommand &&
-        command is! ReachDeadlineCommand &&
+    if (!skipPreReconcile &&
+        command is! ReconcileTimerCommand &&
         durable.isActive) {
+      final reconcileAt = _earlierUtc(command.occurredAtUtc, maxReconcileAtUtc);
       final preReconcile = ReconcileTimerCommand(
         commandId: '${command.commandId}:pre',
-        occurredAtUtc: command.occurredAtUtc,
+        occurredAtUtc: reconcileAt,
         nextCycleId: '${command.commandId}:cycle',
         nextCycleConfig: timerCycleConfigFromSettings(settings),
       );
@@ -185,9 +213,16 @@ final class TimerCommandDispatcher {
     _logScreenPauseCommandResult(command, committed);
     await _notificationReconciler?.reconcile(
       committed.snapshot,
-      previousSnapshot: durable,
+      previousSnapshot: preservePreviousNotifications ? durable : null,
     );
     return committed;
+  }
+
+  DateTime _earlierUtc(DateTime first, DateTime? second) {
+    final firstUtc = first.toUtc();
+    final secondUtc = second?.toUtc();
+    if (secondUtc == null || firstUtc.isBefore(secondUtc)) return firstUtc;
+    return secondUtc;
   }
 
   void _logScreenPauseCommandResult(
@@ -243,7 +278,7 @@ final class TimerCommandDispatcher {
   }
 
   Future<void> dispose() async {
-    await _tail;
+    await _queue.idle;
     await _snapshots.close();
   }
 }

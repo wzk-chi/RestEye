@@ -13,14 +13,14 @@ RestEye 曾在活动计时期间每 5 秒更新一次 SQLite 心跳，用于在�
 
 1. 活动计时不再写入周期心跳；SQLite 只在设置保存、计时状态转换、通知命令和统计事件等真实业务变化时写入。
 2. `AppRuntime.dispose()` 是唯一的受控退出清理入口，并且可等待、幂等；它先停止活动计时并提交停止事件，再释放通知、屏幕状态、计时 runtime、dispatcher 和数据库。
-3. Windows 与 macOS 使用 Flutter 的可等待退出请求协议。原生宿主收到真正退出请求后，由 Dart 返回 `AppExitResponse.exit` 前等待 `AppRuntime.dispose()` 完成。隐藏到托盘/菜单栏不发送退出请求。
-4. Android 没有桌面端的可等待退出协议。根路由返回触发 `SystemNavigator.pop` 时，`MainActivity.popSystemNavigator()` 通过 `dev.resteye/app_exit` 请求 Dart 清理，收到结果后才 `finish()`。切换应用、进入后台和锁屏不属于退出。生命周期 `detached` 仍作为无法握手场景的尽力收尾。
+3. macOS 使用 Flutter 的可等待退出请求协议（`FlutterAppDelegate` 的 `applicationShouldTerminate` 握手）：原生宿主收到真正退出请求后，由 Dart 返回 `AppExitResponse.exit` 前等待 `AppRuntime.dispose()` 完成。Windows 的窗口关闭（`WM_CLOSE`）同样通过 `dev.resteye/app_exit` 通道握手：runner 在销毁窗口前调用 Dart 的 `prepareForExit`，Dart 完成 `AppRuntime.dispose()` 后回复，runner 收到结果（成功、错误或未实现均视为完成）才继续销毁窗口；回复丢失时用户再次关窗会跳过握手直接退出。隐藏到托盘/菜单栏不发送退出请求。
+4. Android 没有桌面端窗口关闭路径。根路由返回触发 `SystemNavigator.pop` 时，`MainActivity.popSystemNavigator()` 通过 `dev.resteye/app_exit` 请求 Dart 清理，收到结果后才 `finish()`。切换应用、进入后台和锁屏不属于退出。生命周期 `detached` 仍作为无法握手场景的尽力收尾。
 5. 异常退出后若数据库仍有活动快照，下次启动以该快照最近一次已提交的阶段起点 `startedAtUtc` 为截止点结束它。未知的进程离线时长不计入工作或休息统计。
 6. schema v12 加入的 `last_heartbeat_at_utc` 作为兼容字段保留，避免为删除内部字段执行无收益迁移；新版本不再读取或更新它。
 
 ## 结果
 
-- 正常窗口退出、托盘/菜单栏退出和 Android 根返回可以在进程结束前可靠提交停止事件。
+- 正常窗口退出（Windows `WM_CLOSE` 经 `dev.resteye/app_exit` 握手；macOS 经可等待退出请求协议）、托盘/菜单栏退出和 Android 根返回可以在进程结束前可靠提交停止事件。
 - 活动计时不再产生固定周期磁盘写入。
 - 任务管理器强杀、崩溃、系统直接回收和断电无法精确记录退出时刻；恢复时会保守舍弃当前阶段中尚未提交的时长。
 - 若未来必须精确覆盖异常终止，需要为各平台另行评估独立 watchdog、系统服务及其安装、权限、功耗和一致性成本，不在本决策中隐式引入。

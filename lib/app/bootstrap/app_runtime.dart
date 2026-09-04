@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:rest_eye/core/lifecycle/app_exit_gateway.dart';
 import 'package:rest_eye/core/logging/app_logger.dart';
-import 'package:rest_eye/features/statistics/application/screen_activity_recorder.dart';
 import 'package:rest_eye/features/timer/application/notification_action_coordinator.dart';
 import 'package:rest_eye/features/timer/application/notification_schedule_reconciler.dart';
 import 'package:rest_eye/features/timer/application/ports/notification_gateway.dart';
@@ -19,7 +18,6 @@ final class AppRuntime {
     required this.notificationReconciler,
     required this.dispatcher,
     required this.timerRuntime,
-    required this.screenActivityRecorder,
     required this.screenLockPauseController,
     required this.appExitGateway,
     required this.logger,
@@ -31,7 +29,6 @@ final class AppRuntime {
   final NotificationScheduleReconciler notificationReconciler;
   final TimerCommandDispatcher dispatcher;
   final TimerRuntime timerRuntime;
-  final ScreenActivityRecorder screenActivityRecorder;
   final ScreenLockPauseController screenLockPauseController;
   final AppExitGateway appExitGateway;
   final AppLogger logger;
@@ -44,14 +41,33 @@ final class AppRuntime {
     try {
       await notificationGateway.initialize();
       await dispatcher.initialize();
-      await dispatcher.stopAbandonedTimer(source: 'startup');
+      // Read the launch action before applying the normal abandoned-timer
+      // policy.  A user tapping "start rest/skip" is an explicit request to
+      // continue the persisted cycle; stopping it first would make the
+      // action stale before the coordinator can handle it.
+      final launchAction = await notificationGateway.takeLaunchAction();
+      if (launchAction == null) {
+        await dispatcher.stopAbandonedTimer(source: 'startup');
+      }
       await notificationActionCoordinator.initialize();
+      if (launchAction != null) {
+        final applied = await notificationActionCoordinator.handleAction(
+          launchAction,
+        );
+        if (!applied) {
+          // A stale/invalid launch action must not keep an activity from the
+          // previous process alive.  The action coordinator has already
+          // marked it stale in the inbox when appropriate.
+          await dispatcher.stopAbandonedTimer(source: 'startup-stale-action');
+        }
+      }
       await dispatcher.recover();
       // Recovery may process an inbox action committed by another isolate.
       // Startup must never leave an activity from the previous process alive.
-      await dispatcher.stopAbandonedTimer(source: 'startup-recovery');
+      if (launchAction == null) {
+        await dispatcher.stopAbandonedTimer(source: 'startup-recovery');
+      }
       timerRuntime.start();
-      await screenActivityRecorder.start();
       await screenLockPauseController.start();
       appExitGateway.start(onExitRequested: dispose);
       _initialized = true;
@@ -75,10 +91,6 @@ final class AppRuntime {
       notificationActionCoordinator.dispose,
     );
     await _disposeStep('screen lock pause', screenLockPauseController.dispose);
-    await _disposeStep(
-      'screen activity recorder',
-      screenActivityRecorder.dispose,
-    );
     await _disposeStep('timer runtime', timerRuntime.dispose);
     await _disposeStep('timer dispatcher', dispatcher.dispose);
     await _disposeStep(

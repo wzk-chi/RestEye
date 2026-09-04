@@ -2,36 +2,24 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rest_eye/core/clock/app_clock.dart';
-import 'package:rest_eye/core/clock/app_clock_provider.dart';
-import 'package:rest_eye/features/statistics/application/screen_activity_recorder.dart';
+import 'package:rest_eye/core/clock/local_date_key.dart';
+import 'package:rest_eye/app/clock_provider.dart';
 import 'package:rest_eye/features/statistics/application/statistics_dependencies.dart';
 import 'package:rest_eye/features/statistics/domain/daily_statistics.dart';
 import 'package:rest_eye/features/statistics/domain/statistics_repository.dart';
-import 'package:rest_eye/features/timer/application/ports/platform_capabilities.dart';
 import 'package:rest_eye/features/timer/application/timer_dependencies.dart';
 import 'package:rest_eye/features/timer/domain/timer_phase.dart';
 import 'package:rest_eye/features/timer/domain/timer_snapshot.dart';
 
 final class StatisticsViewState {
-  const StatisticsViewState({
-    required this.statistics,
-    required this.screenActivityAvailability,
-    required this.date,
-  });
+  const StatisticsViewState({required this.statistics, required this.date});
 
   final DailyStatistics statistics;
-  final CapabilityAvailability screenActivityAvailability;
   final DateTime date;
 
-  StatisticsViewState copyWith({
-    DailyStatistics? statistics,
-    CapabilityAvailability? screenActivityAvailability,
-    DateTime? date,
-  }) {
+  StatisticsViewState copyWith({DailyStatistics? statistics, DateTime? date}) {
     return StatisticsViewState(
       statistics: statistics ?? this.statistics,
-      screenActivityAvailability:
-          screenActivityAvailability ?? this.screenActivityAvailability,
       date: date ?? this.date,
     );
   }
@@ -51,7 +39,6 @@ final class StatisticsController extends AsyncNotifier<StatisticsViewState> {
   @override
   Future<StatisticsViewState> build() async {
     final dispatcher = ref.watch(timerCommandDispatcherProvider);
-    final recorder = ref.watch(screenActivityRecorderProvider);
     final repository = ref.watch(statisticsRepositoryProvider);
     final clock = ref.watch(appClockProvider);
     final today = _dateOnly(clock.utcNow.toLocal());
@@ -68,22 +55,16 @@ final class StatisticsController extends AsyncNotifier<StatisticsViewState> {
     final timerSubscription = dispatcher.snapshots.listen((_) {
       requestRefresh();
     });
-    final screenSubscription = recorder.changes.listen((_) {
-      requestRefresh();
-    });
-    final availabilitySubscription = recorder.availability.listen((value) {
-      final current = state.value;
-      if (current == null) return;
-      state = AsyncData(current.copyWith(screenActivityAvailability: value));
-    });
     final minuteTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      // Live data only moves for the selected day while it is today; past
+      // dates still refresh on timer snapshot changes via the subscription.
+      final today = _dateOnly(clock.utcNow.toLocal());
+      if (_date != today) return;
       requestRefresh();
     });
     ref.onDispose(() {
       minuteTimer.cancel();
       unawaited(timerSubscription.cancel());
-      unawaited(screenSubscription.cancel());
-      unawaited(availabilitySubscription.cancel());
     });
 
     StatisticsViewState initial;
@@ -92,7 +73,6 @@ final class StatisticsController extends AsyncNotifier<StatisticsViewState> {
       initial = await _load(
         repository,
         clock,
-        recorder,
         snapshot: dispatcher.current,
         date: _date!,
       );
@@ -119,7 +99,6 @@ final class StatisticsController extends AsyncNotifier<StatisticsViewState> {
           () => _load(
             ref.read(statisticsRepositoryProvider),
             ref.read(appClockProvider),
-            ref.read(screenActivityRecorderProvider),
             snapshot: ref.read(timerCommandDispatcherProvider).current,
             date: _date!,
           ),
@@ -138,22 +117,14 @@ final class StatisticsController extends AsyncNotifier<StatisticsViewState> {
 
   Future<StatisticsViewState> _load(
     StatisticsRepository repository,
-    AppClock clock,
-    ScreenActivityRecorder recorder, {
+    AppClock clock, {
     required TimerSnapshot snapshot,
     required DateTime date,
   }) async {
     final now = clock.utcNow;
-    final stored = await repository.loadForLocalDate(
-      localDateKey(date),
-      nowUtc: now,
-    );
+    final stored = await repository.loadForLocalDate(localDateKey(date));
     final statistics = _includeActiveWork(stored, snapshot, now, date);
-    return StatisticsViewState(
-      statistics: statistics,
-      screenActivityAvailability: recorder.currentAvailability,
-      date: date,
-    );
+    return StatisticsViewState(statistics: statistics, date: date);
   }
 
   DateTime _dateOnly(DateTime date) =>

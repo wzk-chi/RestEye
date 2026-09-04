@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:rest_eye/core/async/serial_operation_queue.dart';
 import 'package:rest_eye/core/logging/app_logger.dart';
 import 'package:rest_eye/features/settings/domain/settings_repository.dart';
 import 'package:rest_eye/features/timer/application/ports/notification_gateway.dart';
@@ -7,6 +8,7 @@ import 'package:rest_eye/features/timer/application/timer_command_dispatcher.dar
 import 'package:rest_eye/features/timer/application/timer_cycle_config_factory.dart';
 import 'package:rest_eye/features/timer/domain/timer_command.dart';
 import 'package:rest_eye/features/timer/domain/timer_repository.dart';
+import 'package:rest_eye/features/timer/domain/timer_transition.dart';
 
 final class NotificationActionCoordinator {
   NotificationActionCoordinator(
@@ -23,7 +25,7 @@ final class NotificationActionCoordinator {
   final TimerCommandDispatcher _dispatcher;
   final AppLogger _logger;
   StreamSubscription<NotificationActionRequest>? _subscription;
-  Future<void> _tail = Future.value();
+  final _queue = SerialOperationQueue();
 
   Future<void> initialize() async {
     start();
@@ -42,26 +44,44 @@ final class NotificationActionCoordinator {
     );
   }
 
-  Future<void> handleAction(NotificationActionRequest action) async {
+  Future<bool> handleAction(NotificationActionRequest action) async {
     // Keep reconciliation from treating an action notification as missing
-    // while the platform callback is still committing its timer command.
+    // while the platform callback is still committing its timer command. The
+    // reconcile that processes the command cancels the notification; the
+    // release below only matters when the command itself failed, so
+    // reconciliation can take the notification over again.
     _gateway.claimActionNotification(action.notificationId);
-    final operation = _tail.then((_) => _dispatch(action));
-    _tail = operation.then<void>((_) {}, onError: (_, _) {});
-    await operation;
+    try {
+      return await _queue.run(() => _dispatch(action));
+    } finally {
+      _gateway.releaseActionNotification(action.notificationId);
+    }
   }
 
-  Future<void> _dispatch(NotificationActionRequest action) async {
+  Future<bool> _dispatch(NotificationActionRequest action) async {
     try {
+      final expiresAt = action.expiresAtUtc;
+      if (expiresAt != null && action.occurredAtUtc.isAfter(expiresAt)) {
+        // Do not enqueue an already-expired action. The next reconciliation
+        // owns cancellation of the obsolete notification and no offline time
+        // is fed into the timer reducer.
+        return false;
+      }
       final command = await _commandFor(action);
       await _timerRepository.enqueueCommand(command);
-      await _dispatcher.dispatch(command, fromInbox: true);
+      final transition = await _dispatcher.dispatch(
+        command,
+        fromInbox: true,
+        maxReconcileAtUtc: action.expiresAtUtc,
+      );
+      return transition.outcome == TimerTransitionOutcome.applied;
     } catch (error, stackTrace) {
       _logger.error(
         'Notification action handling failed',
         error: error,
         stackTrace: stackTrace,
       );
+      return false;
     }
   }
 
@@ -99,6 +119,6 @@ final class NotificationActionCoordinator {
   Future<void> dispose() async {
     await _subscription?.cancel();
     _subscription = null;
-    await _tail;
+    await _queue.idle;
   }
 }

@@ -590,11 +590,29 @@ abstract class AppLocalizations {
   /// **'设置休息时长'**
   String get timerQuickRestDurationTitle;
 
-  /// No description provided for @timerQuickDurationDescription.
+  /// No description provided for @durationDecrease.
   ///
   /// In zh, this message translates to:
-  /// **'新时长从下一轮开始生效。'**
-  String get timerQuickDurationDescription;
+  /// **'减少'**
+  String get durationDecrease;
+
+  /// No description provided for @durationIncrease.
+  ///
+  /// In zh, this message translates to:
+  /// **'增加'**
+  String get durationIncrease;
+
+  /// No description provided for @durationStopConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'停止当前计时？'**
+  String get durationStopConfirmTitle;
+
+  /// No description provided for @durationStopConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存新时长会停止正在进行的计时，新时长将从下一轮开始使用。'**
+  String get durationStopConfirmMessage;
 
   /// No description provided for @settingsMinutesValue.
   ///

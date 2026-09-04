@@ -1,4 +1,4 @@
-import 'package:rest_eye/core/build/app_build.dart';
+import 'package:rest_eye/core/config/app_build.dart';
 
 enum TimeoutBehavior { nextCycle, stopTimer }
 

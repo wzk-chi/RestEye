@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
+import 'package:rest_eye/core/clock/local_date_key.dart';
 import 'package:rest_eye/features/timer/domain/timer_command.dart';
 import 'package:rest_eye/features/timer/domain/timer_event.dart';
 import 'package:rest_eye/features/timer/domain/timer_phase.dart';
@@ -19,23 +20,22 @@ abstract final class TimerRecordMapper {
         milliseconds: row.missedWorkReminderIntervalMs,
       ),
       restTimeout: Duration(milliseconds: row.restTimeoutMs),
-      timeoutBehavior: _timeoutBehaviorFromName(row.timeoutBehavior),
-      restTimeoutBehavior: _timeoutBehaviorFromName(row.restTimeoutBehavior),
+      timeoutBehavior: _timeoutBehaviorFromName(
+        row.timeoutBehavior,
+        strict: true,
+      ),
+      restTimeoutBehavior: _timeoutBehaviorFromName(
+        row.restTimeoutBehavior,
+        strict: true,
+      ),
       restCompletionBehavior: _restCompletionBehaviorFromJson(
         row.restCompletionBehavior,
+        strict: true,
       ),
     );
     _validateConfig(config);
     final phase = _timerPhase(row.phase);
-    final allowsUnboundedRest =
-        phase == TimerPhase.resting &&
-        config.restCompletionBehavior == RestCompletionBehavior.continueRest;
-    if (phase != TimerPhase.idle &&
-        row.deadlineAtUtc == null &&
-        !allowsUnboundedRest) {
-      throw const FormatException('Active timer snapshot has no deadline');
-    }
-    return TimerSnapshot(
+    final snapshot = TimerSnapshot(
       cycleId: row.cycleId,
       revision: row.revision,
       phase: phase,
@@ -45,6 +45,8 @@ abstract final class TimerRecordMapper {
       nextReminderAtUtc: row.nextReminderAtUtc?.toUtc(),
       cycleConfig: config,
     );
+    snapshot.validateInvariant();
+    return snapshot;
   }
 
   static TimerSnapshotsTableCompanion snapshotToCompanion(
@@ -87,7 +89,6 @@ abstract final class TimerRecordMapper {
     SkipRestCommand() => 'skipRest',
     CompleteRestCommand() => 'completeRest',
     StopTimerCommand() => 'stopTimer',
-    ReachDeadlineCommand() => 'reachDeadline',
     ReconcileTimerCommand() => 'reconcileTimer',
   };
 
@@ -118,9 +119,6 @@ abstract final class TimerRecordMapper {
         payload['nextCycleConfig'] = _configToJson(value.nextCycleConfig);
       case StopTimerCommand():
         break;
-      case ReachDeadlineCommand value:
-        payload['nextCycleId'] = value.nextCycleId;
-        payload['nextCycleConfig'] = _configToJson(value.nextCycleConfig);
       case ReconcileTimerCommand value:
         payload['nextCycleId'] = value.nextCycleId;
         payload['nextCycleConfig'] = _configToJson(value.nextCycleConfig);
@@ -188,16 +186,9 @@ abstract final class TimerRecordMapper {
         expectedPhase: common.expectedPhase,
         expectedRevision: common.expectedRevision,
       ),
-      'reachDeadline' => ReachDeadlineCommand(
-        commandId: common.commandId,
-        occurredAtUtc: common.occurredAtUtc,
-        nextCycleId: payload['nextCycleId']! as String,
-        nextCycleConfig: _configFromJson(payload['nextCycleConfig']),
-        expectedCycleId: common.expectedCycleId,
-        expectedPhase: common.expectedPhase,
-        expectedRevision: common.expectedRevision,
-      ),
-      'reconcileTimer' => ReconcileTimerCommand(
+      // 'reachDeadline' is the pre-merge name of the same command shape;
+      // keep reading it so inbox rows persisted by older builds still replay.
+      'reachDeadline' || 'reconcileTimer' => ReconcileTimerCommand(
         commandId: common.commandId,
         occurredAtUtc: common.occurredAtUtc,
         nextCycleId: payload['nextCycleId']! as String,
@@ -275,16 +266,10 @@ abstract final class TimerRecordMapper {
       eventType: Value(event.type.name),
       occurredAtUtc: Value(occurredAtUtc.toUtc()),
       utcOffsetMinutes: Value(localDate.timeZoneOffset.inMinutes),
-      localDateKey: Value(_localDateKey(localDate)),
+      localDateKey: Value(localDateKey(localDate)),
       durationMs: Value(duration.inMilliseconds),
       countValue: Value(countValue),
     );
-  }
-
-  static String _localDateKey(DateTime local) {
-    final month = local.month.toString().padLeft(2, '0');
-    final day = local.day.toString().padLeft(2, '0');
-    return '${local.year}-$month-$day';
   }
 
   static Map<String, Object?> _configToJson(TimerCycleConfig config) {
@@ -322,7 +307,6 @@ abstract final class TimerRecordMapper {
             TimerCycleConfig.defaults.restTimeout.inMilliseconds,
       ),
       timeoutBehavior: _timeoutBehaviorFromJson(map['timeoutBehavior']),
-      restTimeoutBehavior: _timeoutBehaviorFromJson(map['restTimeoutBehavior']),
       restCompletionBehavior: _restCompletionBehaviorFromJson(
         map['restCompletionBehavior'],
       ),
@@ -333,20 +317,31 @@ abstract final class TimerRecordMapper {
 
   static TimeoutBehavior _timeoutBehaviorFromJson(Object? value) {
     final name = value as String?;
-    return _timeoutBehaviorFromName(name);
+    return _timeoutBehaviorFromName(name, strict: true);
   }
 
-  static TimeoutBehavior _timeoutBehaviorFromName(String? value) {
-    return value == 'stopTimer'
-        ? TimeoutBehavior.stopTimer
-        : TimeoutBehavior.nextCycle;
+  static TimeoutBehavior _timeoutBehaviorFromName(
+    String? value, {
+    bool strict = false,
+  }) {
+    return switch (value) {
+      'stopTimer' => TimeoutBehavior.stopTimer,
+      'nextCycle' => TimeoutBehavior.nextCycle,
+      _ when !strict => TimeoutBehavior.nextCycle,
+      _ => throw FormatException('Unknown timeout behavior: $value'),
+    };
   }
 
-  static RestCompletionBehavior _restCompletionBehaviorFromJson(Object? value) {
+  static RestCompletionBehavior _restCompletionBehaviorFromJson(
+    Object? value, {
+    bool strict = false,
+  }) {
     return switch (value as String?) {
       'stopTimer' => RestCompletionBehavior.stopTimer,
       'continueRest' => RestCompletionBehavior.continueRest,
-      _ => RestCompletionBehavior.startWork,
+      'startWork' => RestCompletionBehavior.startWork,
+      _ when !strict => RestCompletionBehavior.startWork,
+      _ => throw FormatException('Unknown rest completion behavior: $value'),
     };
   }
 

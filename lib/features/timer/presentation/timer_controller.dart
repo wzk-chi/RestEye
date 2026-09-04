@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rest_eye/core/clock/app_clock_provider.dart';
+import 'package:rest_eye/app/clock_provider.dart';
 import 'package:rest_eye/core/error/app_failure.dart';
 import 'package:rest_eye/features/settings/application/settings_dependencies.dart';
 import 'package:rest_eye/features/timer/application/ports/notification_gateway.dart';
@@ -18,6 +18,7 @@ final class TimerViewState {
     required this.snapshot,
     required this.remaining,
     required this.displayDuration,
+    required this.displayElapsed,
     required this.progress,
     required this.notificationPermission,
     required this.notificationCapability,
@@ -28,6 +29,7 @@ final class TimerViewState {
   final TimerSnapshot snapshot;
   final Duration remaining;
   final Duration displayDuration;
+  final Duration displayElapsed;
   final double progress;
   final NotificationPermissionStatus notificationPermission;
   final CapabilityAvailability notificationCapability;
@@ -38,6 +40,7 @@ final class TimerViewState {
     TimerSnapshot? snapshot,
     Duration? remaining,
     Duration? displayDuration,
+    Duration? displayElapsed,
     double? progress,
     NotificationPermissionStatus? notificationPermission,
     CapabilityAvailability? notificationCapability,
@@ -49,6 +52,7 @@ final class TimerViewState {
       snapshot: snapshot ?? this.snapshot,
       remaining: remaining ?? this.remaining,
       displayDuration: displayDuration ?? this.displayDuration,
+      displayElapsed: displayElapsed ?? this.displayElapsed,
       progress: progress ?? this.progress,
       notificationPermission:
           notificationPermission ?? this.notificationPermission,
@@ -87,6 +91,7 @@ final class TimerController extends Notifier<TimerViewState> {
       snapshot: snapshot,
       remaining: snapshot.remainingAt(clock.utcNow),
       displayDuration: snapshot.displayDurationAt(clock.utcNow),
+      displayElapsed: snapshot.displayElapsedAt(clock.utcNow),
       progress: snapshot.progressAt(clock.utcNow),
       notificationPermission: NotificationPermissionStatus.notDetermined,
       notificationCapability: notificationReconciler.currentAvailability,
@@ -99,6 +104,7 @@ final class TimerController extends Notifier<TimerViewState> {
       snapshot: tick.snapshot,
       remaining: tick.remaining,
       displayDuration: tick.displayDuration,
+      displayElapsed: tick.displayElapsed,
       progress: tick.progress,
     );
   }

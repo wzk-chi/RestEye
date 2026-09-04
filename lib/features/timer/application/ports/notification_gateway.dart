@@ -1,5 +1,4 @@
 import 'package:rest_eye/features/timer/domain/timer_phase.dart';
-import 'package:rest_eye/features/settings/domain/app_settings.dart';
 
 enum NotificationKind { workComplete, restReminder, restComplete }
 
@@ -10,6 +9,16 @@ enum NotificationPermissionStatus {
   denied,
   notDetermined,
   unavailable,
+}
+
+/// Presentation inputs the gateway needs to render a notification.
+///
+/// Deliberately narrow: the port must not depend on the settings domain
+/// model. A `null` [localeCode] means "follow the system locale".
+final class NotificationPresentationOptions {
+  const NotificationPresentationOptions({required this.localeCode});
+
+  final String? localeCode;
 }
 
 /// Whether an empty active-notification query proves that nothing is shown.
@@ -28,6 +37,7 @@ final class ScheduledNotification {
     required this.expectedPhase,
     required this.expectedRevision,
     required this.scheduledAtUtc,
+    required this.expiresAtUtc,
     required this.vibrationEnabled,
     required this.hasRestActions,
     required this.hasStartWorkAction,
@@ -39,6 +49,10 @@ final class ScheduledNotification {
   final TimerPhase expectedPhase;
   final int expectedRevision;
   final DateTime scheduledAtUtc;
+
+  /// Last instant at which an action from this notification can affect the
+  /// cycle. This also bounds recovery when a background isolate was offline.
+  final DateTime expiresAtUtc;
   final bool vibrationEnabled;
   final bool hasRestActions;
   final bool hasStartWorkAction;
@@ -53,6 +67,7 @@ final class NotificationActionRequest {
     required this.expectedPhase,
     required this.expectedRevision,
     required this.occurredAtUtc,
+    this.expiresAtUtc,
   });
 
   final String commandId;
@@ -62,6 +77,7 @@ final class NotificationActionRequest {
   final TimerPhase expectedPhase;
   final int expectedRevision;
   final DateTime occurredAtUtc;
+  final DateTime? expiresAtUtc;
 }
 
 abstract interface class NotificationGateway {
@@ -79,9 +95,16 @@ abstract interface class NotificationGateway {
 
   void claimActionNotification(int notificationId);
 
+  /// Releases a claim made by [claimActionNotification], e.g. when the action
+  /// command could not be enqueued and reconciliation should take over.
+  void releaseActionNotification(int notificationId);
+
+  /// IDs currently claimed by an in-flight notification action.
+  Set<int> get claimedActionNotificationIds;
+
   Future<void> schedule(
     ScheduledNotification notification, {
-    required AppSettings settings,
+    required NotificationPresentationOptions presentation,
   });
 
   Future<void> cancel(int notificationId);

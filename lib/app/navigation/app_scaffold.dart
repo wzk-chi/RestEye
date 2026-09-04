@@ -22,20 +22,14 @@ class _AppScaffoldState extends State<AppScaffold> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 600;
-        final content = IndexedStack(
-          index: _selected.index,
-          children: [
-            _selected == AppSection.home
-                ? const TimerPage()
-                : const SizedBox.shrink(),
-            _selected == AppSection.statistics
-                ? const StatisticsPage()
-                : const SizedBox.shrink(),
-            _selected == AppSection.settings
-                ? const SettingsPage()
-                : const SizedBox.shrink(),
-          ],
-        );
+        // Sections mount lazily: a section is only built while selected, so
+        // the statistics provider disposes (and stops refreshing) when the
+        // user navigates away.
+        final content = switch (_selected) {
+          AppSection.home => const TimerPage(),
+          AppSection.statistics => const StatisticsPage(),
+          AppSection.settings => const SettingsPage(),
+        };
         final safeContent = SafeArea(top: true, bottom: false, child: content);
         return Scaffold(
           body: compact

@@ -510,7 +510,9 @@ class _DayTimeline extends StatelessWidget {
       final start = segment.startedAtUtc.toLocal();
       final end = segment.endedAtUtc.toLocal();
       if (!end.isAfter(dayStart)) continue;
-      final endOfDay = dayStart.add(const Duration(days: 1));
+      // Construct the next local calendar date instead of adding 24 elapsed
+      // hours; a DST transition can make a civil day 23 or 25 hours long.
+      final endOfDay = DateTime(day.year, day.month, day.day + 1);
       if (!start.isBefore(endOfDay)) continue;
       final visibleStart = start.isAfter(dayStart) ? start : dayStart;
       final visibleEnd = end.isBefore(endOfDay) ? end : endOfDay;
@@ -557,8 +559,9 @@ class _HourCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final hourStart = DateTime(day.year, day.month, day.day, hour);
-    final hourEnd = hourStart.add(const Duration(hours: 1));
+    final hourEnd = DateTime(day.year, day.month, day.day, hour + 1);
     final hourDuration = hourEnd.difference(hourStart).inMilliseconds;
+    if (hourDuration <= 0) return const SizedBox.shrink();
     final visibleSegments = <_VisibleTimelineSegment>[];
     for (final segment in segments) {
       final segmentStart = segment.startedAtUtc.toLocal();

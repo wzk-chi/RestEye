@@ -6,8 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:rest_eye/core/clock/app_clock.dart';
-import 'package:rest_eye/features/settings/domain/app_settings.dart';
-import 'package:rest_eye/features/settings/domain/settings_repository.dart';
+import 'package:rest_eye/core/logging/app_logger.dart';
 import 'package:rest_eye/features/timer/application/ports/notification_gateway.dart';
 import 'package:rest_eye/features/timer/domain/timer_phase.dart';
 import 'package:rest_eye/l10n/generated/app_localizations.dart';
@@ -18,8 +17,9 @@ import 'package:timezone/timezone.dart' as tz;
 final class LocalNotificationGateway
     implements NotificationGateway, ActiveNotificationQueryCapability {
   LocalNotificationGateway(
-    this._settingsRepository,
-    this._clock, {
+    this._clock,
+    this._logger, {
+    required this._initialPresentation,
     this.onDidReceiveBackgroundNotificationResponse,
   });
 
@@ -34,8 +34,9 @@ final class LocalNotificationGateway
     'dev.resteye/notification_identity',
   );
 
-  final SettingsRepository _settingsRepository;
   final AppClock _clock;
+  final AppLogger _logger;
+  final NotificationPresentationOptions _initialPresentation;
   final DidReceiveBackgroundNotificationResponseCallback?
   onDidReceiveBackgroundNotificationResponse;
   final FlutterLocalNotificationsPlugin _plugin =
@@ -48,6 +49,7 @@ final class LocalNotificationGateway
   NotificationActionRequest? _launchAction;
   ActiveNotificationQueryReliability _activeNotificationQueryReliability =
       ActiveNotificationQueryReliability.nonAuthoritative;
+  var _pluginReady = false;
   var _disposed = false;
 
   @override
@@ -63,70 +65,82 @@ final class LocalNotificationGateway
   @override
   Future<void> initialize() async {
     tz_data.initializeTimeZones();
-    final settings = await _settingsRepository.load();
-    final strings = _stringsFor(settings);
-    final windowsIconPath = _windowsNotificationIconPath();
-    final darwin = DarwinInitializationSettings(
-      requestAlertPermission: false,
-      requestBadgePermission: false,
-      requestSoundPermission: false,
-      notificationCategories: [
-        DarwinNotificationCategory(
-          _restCategory,
-          actions: [
-            DarwinNotificationAction.plain(
-              _startRestAction,
-              strings.notificationActionStartRest,
-            ),
-            DarwinNotificationAction.plain(
-              _skipRestAction,
-              strings.notificationActionSkipRest,
-            ),
-          ],
+    final strings = _stringsFor(_initialPresentation.localeCode);
+    try {
+      final windowsIconPath = _windowsNotificationIconPath();
+      final darwin = DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
+        notificationCategories: [
+          DarwinNotificationCategory(
+            _restCategory,
+            actions: [
+              DarwinNotificationAction.plain(
+                _startRestAction,
+                strings.notificationActionStartRest,
+              ),
+              DarwinNotificationAction.plain(
+                _skipRestAction,
+                strings.notificationActionSkipRest,
+              ),
+            ],
+          ),
+          DarwinNotificationCategory(
+            _workCategory,
+            actions: [
+              DarwinNotificationAction.plain(
+                _startWorkAction,
+                strings.actionStartWork,
+              ),
+            ],
+          ),
+        ],
+      );
+      final initializationSettings = InitializationSettings(
+        android: const AndroidInitializationSettings('ic_stat_rest_eye'),
+        iOS: darwin,
+        macOS: darwin,
+        windows: WindowsInitializationSettings(
+          appName: strings.appTitle,
+          appUserModelId: _windowsAppUserModelId,
+          guid: _windowsGuid,
+          iconPath: windowsIconPath,
         ),
-        DarwinNotificationCategory(
-          _workCategory,
-          actions: [
-            DarwinNotificationAction.plain(
-              _startWorkAction,
-              strings.actionStartWork,
-            ),
-          ],
-        ),
-      ],
-    );
-    final initializationSettings = InitializationSettings(
-      android: const AndroidInitializationSettings('ic_stat_rest_eye'),
-      iOS: darwin,
-      macOS: darwin,
-      windows: WindowsInitializationSettings(
-        appName: strings.appTitle,
-        appUserModelId: _windowsAppUserModelId,
-        guid: _windowsGuid,
-        iconPath: windowsIconPath,
-      ),
-    );
-    await _plugin.initialize(
-      settings: initializationSettings,
-      onDidReceiveNotificationResponse: _handleResponse,
-      onDidReceiveBackgroundNotificationResponse:
-          onDidReceiveBackgroundNotificationResponse,
-    );
-    _activeNotificationQueryReliability =
-        _platformActiveNotificationQueryReliability();
-    if (windowsIconPath != null) {
-      await _windowsIdentityChannel.invokeMethod<void>('register', {
-        'appUserModelId': _windowsAppUserModelId,
-        'displayName': strings.appTitle,
-        'iconPath': windowsIconPath,
-      });
-    }
-    final launchDetails = await _plugin.getNotificationAppLaunchDetails();
-    final response = launchDetails?.notificationResponse;
-    if (launchDetails?.didNotificationLaunchApp == true && response != null) {
-      _launchAction = _parseResponse(response);
-      final action = _launchAction;
-      if (action != null) claimActionNotification(action.notificationId);
+      );
+      await _plugin.initialize(
+        settings: initializationSettings,
+        onDidReceiveNotificationResponse: _handleResponse,
+        onDidReceiveBackgroundNotificationResponse:
+            onDidReceiveBackgroundNotificationResponse,
+      );
+      _activeNotificationQueryReliability =
+          _platformActiveNotificationQueryReliability();
+      if (windowsIconPath != null) {
+        await _windowsIdentityChannel.invokeMethod<void>('register', {
+          'appUserModelId': _windowsAppUserModelId,
+          'displayName': strings.appTitle,
+          'iconPath': windowsIconPath,
+        });
+      }
+      final launchDetails = await _plugin.getNotificationAppLaunchDetails();
+      final response = launchDetails?.notificationResponse;
+      if (launchDetails?.didNotificationLaunchApp == true && response != null) {
+        _launchAction = _parseResponse(response);
+        final action = _launchAction;
+        if (action != null) claimActionNotification(action.notificationId);
+      }
+      // Notification capability degradation is handled by the reconciler via
+      // failed queries/schedules; a broken plugin setup must not take down
+      // application bootstrap.
+      _pluginReady = true;
+    } catch (error) {
+      _pluginReady = false;
+      _logger.warning(
+        'Notification gateway initialization failed; '
+        'notifications degrade until restart',
+        error: error,
+      );
     }
   }
 
@@ -146,6 +160,7 @@ final class LocalNotificationGateway
 
   @override
   Future<NotificationPermissionStatus> permissionStatus() async {
+    if (!_pluginReady) return NotificationPermissionStatus.unavailable;
     if (defaultTargetPlatform == TargetPlatform.windows) {
       return NotificationPermissionStatus.granted;
     }
@@ -225,17 +240,13 @@ final class LocalNotificationGateway
   @override
   Future<Set<int>> activeNotificationIds() async {
     final ids = <int>{..._claimedActionNotificationIds};
-    if (_platformActiveNotificationQueryReliability() ==
+    if (_activeNotificationQueryReliability ==
         ActiveNotificationQueryReliability.nonAuthoritative) {
-      _activeNotificationQueryReliability =
-          ActiveNotificationQueryReliability.nonAuthoritative;
       return ids;
     }
     try {
       final active = await _plugin.getActiveNotifications();
       ids.addAll(active.map((item) => item.id).whereType<int>());
-      _activeNotificationQueryReliability =
-          ActiveNotificationQueryReliability.authoritative;
     } on UnimplementedError {
       _markActiveNotificationQueryNonAuthoritative();
     } on UnsupportedError {
@@ -273,18 +284,28 @@ final class LocalNotificationGateway
   }
 
   @override
+  void releaseActionNotification(int notificationId) {
+    if (!_disposed) _claimedActionNotificationIds.remove(notificationId);
+  }
+
+  @override
+  Set<int> get claimedActionNotificationIds =>
+      Set.unmodifiable(_claimedActionNotificationIds);
+
+  @override
   Future<void> schedule(
     ScheduledNotification notification, {
-    required AppSettings settings,
+    required NotificationPresentationOptions presentation,
   }) async {
     if (_claimedActionNotificationIds.contains(notification.id)) return;
-    final strings = _stringsFor(settings);
+    final strings = _stringsFor(presentation.localeCode);
     final copy = _copyFor(notification.kind, strings);
     final basePayload = jsonEncode({
       'notificationId': notification.id,
       'cycleId': notification.cycleId,
       'expectedPhase': notification.expectedPhase.name,
       'expectedRevision': notification.expectedRevision,
+      'expiresAtUtc': notification.expiresAtUtc.toUtc().toIso8601String(),
     });
     final androidActions = notification.hasRestActions
         ? [
@@ -445,9 +466,9 @@ final class LocalNotificationGateway
     }
   }
 
-  AppLocalizations _stringsFor(AppSettings settings) {
-    final locale = resolveEffectiveSupportedLocale(
-      settings.localePreference,
+  AppLocalizations _stringsFor(String? localeCode) {
+    final locale = resolveSupportedLocale(
+      localeCode,
       PlatformDispatcher.instance.locales,
     );
     final key = locale.toString();
@@ -556,6 +577,7 @@ final class LocalNotificationGateway
       'cycleId': notification.cycleId,
       'expectedPhase': notification.expectedPhase.name,
       'expectedRevision': notification.expectedRevision,
+      'expiresAtUtc': notification.expiresAtUtc.toUtc().toIso8601String(),
     });
   }
 
@@ -620,12 +642,22 @@ NotificationActionRequest? parseLocalNotificationActionResponse(
       expectedPhase: TimerPhase.values.byName(json['expectedPhase']! as String),
       expectedRevision: json['expectedRevision']! as int,
       occurredAtUtc: now,
+      expiresAtUtc: _parseUtc(json['expiresAtUtc']),
     );
   } on FormatException {
     return null;
   } on ArgumentError {
     return null;
   } on TypeError {
+    return null;
+  }
+}
+
+DateTime? _parseUtc(Object? value) {
+  if (value is! String) return null;
+  try {
+    return DateTime.parse(value).toUtc();
+  } on FormatException {
     return null;
   }
 }

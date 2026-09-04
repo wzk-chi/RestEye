@@ -2,11 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rest_eye/app/theme/rest_eye_spacing.dart';
-import 'package:rest_eye/core/build/app_build.dart';
+import 'package:rest_eye/core/config/app_build.dart';
 import 'package:rest_eye/core/error/app_failure.dart';
 import 'package:rest_eye/features/about/presentation/about_page.dart';
 import 'package:rest_eye/features/settings/application/settings_controller.dart';
 import 'package:rest_eye/features/settings/domain/app_settings.dart';
+import 'package:rest_eye/features/timer/application/timer_dependencies.dart';
 import 'package:rest_eye/features/timer/domain/timer_policy.dart';
 import 'package:rest_eye/l10n/generated/app_localizations.dart';
 
@@ -208,17 +209,17 @@ class _SettingsContent extends ConsumerWidget {
                       ? AppBuild.debugDurationSliderMax.inSeconds.toDouble()
                       : 180,
                   divisions: isDebugBuild ? 55 : 179,
-                  valueLabel: isDebugBuild
-                      ? strings.settingsSecondsValue(
-                          state.draft.workDuration.inSeconds,
-                        )
-                      : strings.settingsMinutesValue(
-                          state.draft.workDuration.inMinutes,
-                        ),
-                  onChanged: (value) => controller.setWorkDuration(
-                    isDebugBuild
-                        ? Duration(seconds: value.round())
-                        : Duration(minutes: value.round()),
+                  labelBuilder: (value) => isDebugBuild
+                      ? strings.settingsSecondsValue(value.round())
+                      : strings.settingsMinutesValue(value.round()),
+                  onCommit: (value) => _saveDuration(
+                    context,
+                    ref,
+                    () => controller.setWorkDuration(
+                      isDebugBuild
+                          ? Duration(seconds: value.round())
+                          : Duration(minutes: value.round()),
+                    ),
                   ),
                 ),
                 const Divider(height: 1),
@@ -230,13 +231,17 @@ class _SettingsContent extends ConsumerWidget {
                       ? AppBuild.debugDurationSliderMax.inSeconds.toDouble()
                       : 600,
                   divisions: isDebugBuild ? 55 : 59,
-                  valueLabel: strings.settingsSecondsValue(
-                    state.draft.restDuration.inSeconds,
+                  labelBuilder: (value) => strings.settingsSecondsValue(
+                    isDebugBuild ? value.round() : (value / 10).round() * 10,
                   ),
-                  onChanged: (value) => controller.setRestDuration(
-                    isDebugBuild
-                        ? Duration(seconds: value.round())
-                        : Duration(seconds: (value / 10).round() * 10),
+                  onCommit: (value) => _saveDuration(
+                    context,
+                    ref,
+                    () => controller.setRestDuration(
+                      isDebugBuild
+                          ? Duration(seconds: value.round())
+                          : Duration(seconds: (value / 10).round() * 10),
+                    ),
                   ),
                 ),
                 const Divider(height: 1),
@@ -331,6 +336,38 @@ class _SettingsContent extends ConsumerWidget {
         ],
       ],
     );
+  }
+
+  /// Applies a duration change that stops a running timer: confirm first,
+  /// then apply. Canceling leaves the draft untouched.
+  Future<void> _saveDuration(
+    BuildContext context,
+    WidgetRef ref,
+    VoidCallback apply,
+  ) async {
+    final active = ref.read(timerCommandDispatcherProvider).current.isActive;
+    if (active) {
+      final strings = AppLocalizations.of(context);
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(strings.durationStopConfirmTitle),
+          content: Text(strings.durationStopConfirmMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(strings.actionCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(strings.actionSave),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+    }
+    apply();
   }
 
   Future<void> _selectThemePreference(
@@ -612,15 +649,17 @@ class _PreferenceDialog<T> extends StatelessWidget {
   }
 }
 
-class _DurationSlider extends StatelessWidget {
+class _DurationSlider extends StatefulWidget {
   const _DurationSlider({
     required this.title,
     required this.value,
     required this.min,
     required this.max,
     required this.divisions,
-    required this.valueLabel,
-    required this.onChanged,
+    this.valueLabel = '',
+    this.labelBuilder,
+    this.onChanged,
+    this.onCommit,
   });
 
   final String title;
@@ -629,12 +668,33 @@ class _DurationSlider extends StatelessWidget {
   final double max;
   final int divisions;
   final String valueLabel;
+
+  /// Live label for commit mode (onCommit != null); takes the drag value.
+  final String Function(double value)? labelBuilder;
+
+  /// Called on every drag tick (direct-apply mode).
   final ValueChanged<double>? onChanged;
+
+  /// Commit mode: the drag stays local and [onCommit] fires once on release.
+  /// Used when applying the value needs a confirmation step.
+  final ValueChanged<double>? onCommit;
+
+  @override
+  State<_DurationSlider> createState() => _DurationSliderState();
+}
+
+class _DurationSliderState extends State<_DurationSlider> {
+  double? _dragValue;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
+    final commitMode = widget.onCommit != null;
+    final current = _dragValue ?? widget.value;
+    final valueLabel = commitMode
+        ? (widget.labelBuilder?.call(current) ?? widget.valueLabel)
+        : widget.valueLabel;
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: context.spacing.md,
@@ -644,7 +704,7 @@ class _DurationSlider extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: Text(title, style: textTheme.bodyLarge)),
+              Expanded(child: Text(widget.title, style: textTheme.bodyLarge)),
               Text(
                 valueLabel,
                 style: textTheme.bodyMedium?.copyWith(color: scheme.primary),
@@ -652,12 +712,20 @@ class _DurationSlider extends StatelessWidget {
             ],
           ),
           Slider(
-            value: value.clamp(min, max),
-            min: min,
-            max: max,
-            divisions: divisions,
+            value: current.clamp(widget.min, widget.max),
+            min: widget.min,
+            max: widget.max,
+            divisions: widget.divisions,
             label: valueLabel,
-            onChanged: onChanged,
+            onChanged: commitMode
+                ? (value) => setState(() => _dragValue = value)
+                : widget.onChanged,
+            onChangeEnd: commitMode
+                ? (value) {
+                    setState(() => _dragValue = null);
+                    widget.onCommit!(value);
+                  }
+                : null,
           ),
         ],
       ),

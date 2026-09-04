@@ -12,10 +12,20 @@ Locale? resolveLocaleOverride(AppLocalePreference preference) =>
 Locale resolveEffectiveSupportedLocale(
   AppLocalePreference preference,
   Iterable<Locale> systemLocales,
+) => resolveSupportedLocale(
+  preference == AppLocalePreference.system ? null : preference.name,
+  systemLocales,
+);
+
+/// Resolves the best supported locale from an explicit [localeCode] (null
+/// means "follow the system locales") with the English ARB as final fallback.
+Locale resolveSupportedLocale(
+  String? localeCode,
+  Iterable<Locale> systemLocales,
 ) {
-  final override = resolveLocaleOverride(preference);
-  if (override != null) return override;
-  for (final locale in systemLocales) {
+  final override = localeCode == null ? null : Locale(localeCode);
+  final candidates = override != null ? [override] : systemLocales;
+  for (final locale in candidates) {
     for (final supported in AppLocalizations.supportedLocales) {
       if (supported.languageCode == locale.languageCode) return supported;
     }

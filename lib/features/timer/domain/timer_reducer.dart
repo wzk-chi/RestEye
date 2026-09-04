@@ -20,13 +20,6 @@ abstract final class TimerReducer {
       SkipRestCommand value => _skipRest(current, value, events),
       CompleteRestCommand value => _completeRest(current, value, events),
       StopTimerCommand value => _stop(current, value, events),
-      ReachDeadlineCommand value => _reconcile(
-        current,
-        command: value,
-        nextCycleId: value.nextCycleId,
-        nextCycleConfig: value.nextCycleConfig,
-        events: events,
-      ),
       ReconcileTimerCommand value => _reconcile(
         current,
         command: value,
@@ -45,7 +38,12 @@ abstract final class TimerReducer {
     final expectedPhase = command.expectedPhase;
     if (expectedPhase != null && expectedPhase != snapshot.phase) return true;
     final expectedRevision = command.expectedRevision;
-    return expectedRevision != null && expectedRevision != snapshot.revision;
+    // Reminder delivery advances the durable revision while the semantic
+    // waiting phase and cycle remain the same.  A notification action from
+    // that window must stay valid until the phase expires; requiring exact
+    // equality would make an older, still-visible reminder button stale as
+    // soon as a newer reminder is reconciled.
+    return expectedRevision != null && snapshot.revision < expectedRevision;
   }
 
   static TimerTransition _startWork(
@@ -294,7 +292,7 @@ abstract final class TimerReducer {
     var transitionCount = 0;
 
     while (transitionCount < maxCatchUpTransitions) {
-      final dueAt = _nextDueAt(snapshot);
+      final dueAt = snapshot.nextDueAtUtc;
       if (dueAt == null || dueAt.isAfter(untilUtc)) break;
       transitionCount++;
 
@@ -518,7 +516,7 @@ abstract final class TimerReducer {
       }
     }
 
-    final nextDueAt = _nextDueAt(snapshot);
+    final nextDueAt = snapshot.nextDueAtUtc;
     if (transitionCount == maxCatchUpTransitions &&
         nextDueAt != null &&
         !nextDueAt.isAfter(untilUtc)) {
@@ -539,18 +537,6 @@ abstract final class TimerReducer {
       return TimerTransition.ignored(current, TimerIgnoredReason.noDeadline);
     }
     return _applied(snapshot, events.created);
-  }
-
-  static DateTime? _nextDueAt(TimerSnapshot snapshot) {
-    if (snapshot.executionStatus == ExecutionStatus.suspended) return null;
-    return switch (snapshot.phase) {
-      TimerPhase.idle => null,
-      TimerPhase.working || TimerPhase.resting => snapshot.deadlineAtUtc,
-      TimerPhase.awaitingRest || TimerPhase.awaitingWork => _earlier(
-        snapshot.deadlineAtUtc,
-        snapshot.nextReminderAtUtc,
-      ),
-    };
   }
 
   static Duration _workDurationToRecord(TimerSnapshot snapshot, DateTime at) {
@@ -587,12 +573,6 @@ abstract final class TimerReducer {
     final end = deadline == null || at.isBefore(deadline) ? at : deadline;
     final elapsed = end.difference(snapshot.startedAtUtc);
     return elapsed.isNegative ? Duration.zero : elapsed;
-  }
-
-  static DateTime? _earlier(DateTime? first, DateTime? second) {
-    if (first == null) return second;
-    if (second == null) return first;
-    return first.isBefore(second) ? first : second;
   }
 
   static TimerSnapshot _workingSnapshot({

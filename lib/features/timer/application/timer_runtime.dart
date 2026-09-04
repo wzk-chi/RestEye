@@ -8,6 +8,7 @@ import 'package:rest_eye/features/timer/application/timer_command_dispatcher.dar
 import 'package:rest_eye/features/timer/application/timer_cycle_config_factory.dart';
 import 'package:rest_eye/features/timer/domain/timer_command.dart';
 import 'package:rest_eye/features/timer/domain/timer_phase.dart';
+import 'package:rest_eye/features/timer/domain/timer_policy.dart';
 import 'package:rest_eye/features/timer/domain/timer_snapshot.dart';
 
 final class TimerRuntimeTick {
@@ -15,12 +16,14 @@ final class TimerRuntimeTick {
     required this.snapshot,
     required this.remaining,
     required this.displayDuration,
+    required this.displayElapsed,
     required this.progress,
   });
 
   final TimerSnapshot snapshot;
   final Duration remaining;
   final Duration displayDuration;
+  final Duration displayElapsed;
   final double progress;
 }
 
@@ -48,6 +51,7 @@ final class TimerRuntime {
   Timer? _retryTimer;
   TimerSnapshot _snapshot = TimerSnapshot.idle();
   Duration _anchorRemaining = Duration.zero;
+  Duration _anchorDisplayElapsed = Duration.zero;
   Duration _anchorElapsed = Duration.zero;
   Future<void> _reconcileTail = Future.value();
   Future<void> _lifecycleStopTail = Future.value();
@@ -98,6 +102,7 @@ final class TimerRuntime {
   void _onSnapshot(TimerSnapshot snapshot) {
     _snapshot = snapshot;
     _anchorRemaining = snapshot.remainingAt(_clock.utcNow);
+    _anchorDisplayElapsed = snapshot.displayElapsedAt(_clock.utcNow);
     _anchorElapsed = _clock.elapsed;
     _retryTimer?.cancel();
     _retryTimer = null;
@@ -132,15 +137,7 @@ final class TimerRuntime {
 
   void _scheduleDeadline(TimerSnapshot snapshot) {
     _deadlineTimer?.cancel();
-    if (snapshot.executionStatus == ExecutionStatus.suspended) return;
-    final dueAt = switch (snapshot.phase) {
-      TimerPhase.idle => null,
-      TimerPhase.working || TimerPhase.resting => snapshot.deadlineAtUtc,
-      TimerPhase.awaitingRest || TimerPhase.awaitingWork => _earlier(
-        snapshot.deadlineAtUtc,
-        snapshot.nextReminderAtUtc,
-      ),
-    };
+    final dueAt = snapshot.nextDueAtUtc;
     if (dueAt == null) return;
     final delay = dueAt.difference(_clock.utcNow);
     _deadlineTimer = Timer(
@@ -188,7 +185,7 @@ final class TimerRuntime {
     final snapshot = await _dispatcher.refreshFromRepository();
     final settings = await _settingsRepository.load();
     await _dispatcher.dispatch(
-      ReachDeadlineCommand(
+      ReconcileTimerCommand(
         commandId: _dispatcher.createId('deadline'),
         occurredAtUtc: _clock.utcNow,
         nextCycleId: _dispatcher.createId('cycle'),
@@ -207,8 +204,18 @@ final class TimerRuntime {
         : calculated.isNegative
         ? Duration.zero
         : calculated;
-    final displayDuration = _snapshot.isContinuingRestAt(_clock.utcNow)
-        ? _snapshot.continuingRestDurationAt(_clock.utcNow)
+    final displayElapsed =
+        _snapshot.executionStatus == ExecutionStatus.suspended
+        ? _anchorDisplayElapsed
+        : (_anchorDisplayElapsed + elapsedSinceAnchor);
+    // Both the countdown and the positive elapsed readout now derive from
+    // the same monotonic tick.  Reading UTC again here used to make the UI
+    // jump when the system clock was adjusted while the process stayed alive.
+    final displayDuration =
+        _snapshot.phase == TimerPhase.resting &&
+            _snapshot.cycleConfig.restCompletionBehavior ==
+                RestCompletionBehavior.continueRest
+        ? displayElapsed
         : _snapshot.displayDurationForRemaining(remaining);
     if (_debugLogging &&
         _snapshot.executionStatus == ExecutionStatus.suspended) {
@@ -223,15 +230,12 @@ final class TimerRuntime {
         snapshot: _snapshot,
         remaining: remaining,
         displayDuration: displayDuration,
+        displayElapsed: displayElapsed.isNegative
+            ? Duration.zero
+            : displayElapsed,
         progress: _snapshot.progressForRemaining(remaining),
       ),
     );
-  }
-
-  DateTime? _earlier(DateTime? first, DateTime? second) {
-    if (first == null) return second;
-    if (second == null) return first;
-    return first.isBefore(second) ? first : second;
   }
 
   Future<void> dispose() async {

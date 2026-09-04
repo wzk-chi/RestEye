@@ -29,9 +29,11 @@ Future<void> _handleBackgroundNotificationAction(
   final database = AppDatabase.open();
   final settingsRepository = DriftSettingsRepository(database);
   final timerRepository = DriftTimerRepository(database, clock);
+  final settings = await settingsRepository.load();
   final notificationGateway = LocalNotificationGateway(
-    settingsRepository,
     clock,
+    logger,
+    initialPresentation: notificationPresentationOptions(settings),
     onDidReceiveBackgroundNotificationResponse:
         handleBackgroundNotificationAction,
   );

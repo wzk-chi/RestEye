@@ -266,7 +266,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get timerQuickRestDurationTitle => '设置休息时长';
 
   @override
-  String get timerQuickDurationDescription => '新时长从下一轮开始生效。';
+  String get durationDecrease => '减少';
+
+  @override
+  String get durationIncrease => '增加';
+
+  @override
+  String get durationStopConfirmTitle => '停止当前计时？';
+
+  @override
+  String get durationStopConfirmMessage => '保存新时长会停止正在进行的计时，新时长将从下一轮开始使用。';
 
   @override
   String settingsMinutesValue(int minutes) {

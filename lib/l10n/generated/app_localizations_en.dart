@@ -279,8 +279,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get timerQuickRestDurationTitle => 'Set rest duration';
 
   @override
-  String get timerQuickDurationDescription =>
-      'The new duration applies from the next cycle.';
+  String get durationDecrease => 'Decrease';
+
+  @override
+  String get durationIncrease => 'Increase';
+
+  @override
+  String get durationStopConfirmTitle => 'Stop the current timer?';
+
+  @override
+  String get durationStopConfirmMessage =>
+      'Saving the new duration stops the running timer; it applies from the next cycle.';
 
   @override
   String settingsMinutesValue(int minutes) {

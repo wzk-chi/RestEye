@@ -2,6 +2,7 @@
 
 #include <flutter/event_stream_handler_functions.h>
 #include <flutter/standard_method_codec.h>
+#include <flutter/method_result_functions.h>
 #include <shellapi.h>
 #include <windows.h>
 #include <wtsapi32.h>
@@ -224,8 +225,7 @@ bool FlutterWindow::OnCreate() {
   notification_identity_method_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
           messenger, "dev.resteye/notification_identity",
-          &flutter::StandardMethodCodec::GetInstance());
-  notification_identity_method_channel_->SetMethodCallHandler(
+          &flutter::StandardMethodCodec::GetInstance());  notification_identity_method_channel_->SetMethodCallHandler(
       [](const flutter::MethodCall<flutter::EncodableValue>& call,
          std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
              result) {
@@ -263,6 +263,21 @@ bool FlutterWindow::OnCreate() {
           return;
         }
         result->Success();
+      });
+
+  // Graceful exit handshake: before the window is destroyed, Dart is asked to
+  // run its runtime cleanup (stop the active timer, cancel notifications) and
+  // the destruction continues only after the reply.
+  app_exit_method_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          messenger, "dev.resteye/app_exit",
+          &flutter::StandardMethodCodec::GetInstance());
+  app_exit_method_channel_->SetMethodCallHandler(
+      [](const flutter::MethodCall<flutter::EncodableValue>& call,
+         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+             result) {
+        // Dart never calls into this channel; only the runner does.
+        result->NotImplemented();
       });
 
   screen_state_method_channel_ =
@@ -367,6 +382,7 @@ void FlutterWindow::OnDestroy() {
   }
   window_behavior_method_channel_.reset();
   notification_identity_method_channel_.reset();
+  app_exit_method_channel_.reset();
   window_behavior_event_channel_.reset();
   screen_state_method_channel_.reset();
   screen_state_event_channel_.reset();
@@ -381,10 +397,40 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
-  if (message == WM_CLOSE && minimize_to_tray_on_close_ &&
-      tray_icon_added_ && !close_requested_) {
-    ShowWindow(hwnd, SW_HIDE);
-    return 0;
+  if (message == WM_CLOSE) {
+    if (minimize_to_tray_on_close_ && tray_icon_added_ && !close_requested_) {
+      ShowWindow(hwnd, SW_HIDE);
+      return 0;
+    }
+    if (!exit_prepared_) {
+      exit_prepared_ = true;
+      if (app_exit_method_channel_ == nullptr) {
+        PostMessageW(hwnd, WM_CLOSE, 0, 0);
+        return 0;
+      }
+      // Ask Dart to finish runtime cleanup first (stop the active timer,
+      // cancel notifications, persist state). Every reply path continues the
+      // close; if the reply is lost the user can close the window again,
+      // which now proceeds without repeating the handshake.
+      const auto continue_close = [hwnd]() {
+        PostMessageW(hwnd, WM_CLOSE, 0, 0);
+      };
+      app_exit_method_channel_->InvokeMethod(
+          "prepareForExit",
+          std::make_unique<flutter::EncodableValue>(),
+          std::make_unique<
+              flutter::MethodResultFunctions<flutter::EncodableValue>>(
+              [continue_close](const flutter::EncodableValue* reply) {
+                continue_close();
+              },
+              [continue_close](const std::string& error_code,
+                               const std::string& error_message,
+                               const flutter::EncodableValue* error_details) {
+                continue_close();
+              },
+              [continue_close]() { continue_close(); }));
+      return 0;
+    }
   }
 
   if (message == kTrayCallbackMessage) {

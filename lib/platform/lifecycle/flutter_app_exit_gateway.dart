@@ -1,12 +1,11 @@
 import 'dart:ui' show AppExitResponse;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:rest_eye/core/lifecycle/app_exit_gateway.dart';
 
 final class FlutterAppExitGateway implements AppExitGateway {
-  static const _androidChannel = MethodChannel('dev.resteye/app_exit');
+  static const _appExitChannel = MethodChannel('dev.resteye/app_exit');
 
   AppLifecycleListener? _lifecycleListener;
   AppExitHandler? _handler;
@@ -23,12 +22,14 @@ final class FlutterAppExitGateway implements AppExitGateway {
         return AppExitResponse.exit;
       },
     );
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      _androidChannel.setMethodCallHandler(_handleAndroidCall);
-    }
+    // Windows and macOS hosts use this channel for window-close handshakes;
+    // Android uses it for the root-back navigation handshake. The lifecycle
+    // listener additionally covers OS-initiated exit requests (e.g. session
+    // end on desktop).
+    _appExitChannel.setMethodCallHandler(_handleAppExitCall);
   }
 
-  Future<void> _handleAndroidCall(MethodCall call) async {
+  Future<void> _handleAppExitCall(MethodCall call) async {
     if (call.method != 'prepareForExit') {
       throw MissingPluginException(
         'Unsupported app exit method: ${call.method}',
@@ -46,9 +47,7 @@ final class FlutterAppExitGateway implements AppExitGateway {
   Future<void> dispose() async {
     if (!_started) return;
     _started = false;
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      _androidChannel.setMethodCallHandler(null);
-    }
+    _appExitChannel.setMethodCallHandler(null);
     _lifecycleListener?.dispose();
     _lifecycleListener = null;
     _handler = null;

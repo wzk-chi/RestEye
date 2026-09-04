@@ -102,21 +102,6 @@ final class StopTimerCommand extends TimerCommand {
   });
 }
 
-final class ReachDeadlineCommand extends TimerCommand {
-  const ReachDeadlineCommand({
-    required super.commandId,
-    required super.occurredAtUtc,
-    required this.nextCycleId,
-    required this.nextCycleConfig,
-    super.expectedCycleId,
-    super.expectedPhase,
-    super.expectedRevision,
-  });
-
-  final String nextCycleId;
-  final TimerCycleConfig nextCycleConfig;
-}
-
 final class ReconcileTimerCommand extends TimerCommand {
   const ReconcileTimerCommand({
     required super.commandId,

@@ -6,12 +6,11 @@ import 'package:rest_eye/app/bootstrap/app_settings_change_effects.dart';
 import 'package:rest_eye/app/bootstrap/background_notification_action.dart';
 import 'package:rest_eye/app/bootstrap/bootstrap_failure_app.dart';
 import 'package:rest_eye/app/rest_eye_app.dart';
-import 'package:rest_eye/core/clock/app_clock_provider.dart';
+import 'package:rest_eye/app/clock_provider.dart';
 import 'package:rest_eye/core/clock/system_app_clock.dart';
 import 'package:rest_eye/core/logging/app_logger.dart';
 import 'package:rest_eye/features/settings/application/settings_dependencies.dart';
 import 'package:rest_eye/features/settings/data/drift_settings_repository.dart';
-import 'package:rest_eye/features/statistics/application/screen_activity_recorder.dart';
 import 'package:rest_eye/features/statistics/application/statistics_dependencies.dart';
 import 'package:rest_eye/features/statistics/data/drift_statistics_repository.dart';
 import 'package:rest_eye/features/timer/application/notification_action_coordinator.dart';
@@ -51,8 +50,9 @@ Future<void> bootstrap() async {
     final timerRepository = DriftTimerRepository(database, clock);
     final statisticsRepository = DriftStatisticsRepository(database);
     final notificationGateway = LocalNotificationGateway(
-      settingsRepository,
       clock,
+      logger,
+      initialPresentation: notificationPresentationOptions(initialSettings),
       onDidReceiveBackgroundNotificationResponse:
           handleBackgroundNotificationAction,
     );
@@ -79,12 +79,6 @@ Future<void> bootstrap() async {
     );
     final appExitGateway = FlutterAppExitGateway();
     final screenStateGateway = MethodChannelScreenStateGateway(clock);
-    final screenActivityRecorder = ScreenActivityRecorder(
-      screenStateGateway,
-      statisticsRepository,
-      clock,
-      logger,
-    );
     final screenLockPauseController = ScreenLockPauseController(
       screenStateGateway,
       settingsRepository,
@@ -115,7 +109,6 @@ Future<void> bootstrap() async {
       notificationReconciler: notificationReconciler,
       dispatcher: dispatcher,
       timerRuntime: timerRuntime,
-      screenActivityRecorder: screenActivityRecorder,
       screenLockPauseController: screenLockPauseController,
       appExitGateway: appExitGateway,
       logger: logger,
@@ -137,9 +130,6 @@ Future<void> bootstrap() async {
             ),
             statisticsRepositoryProvider.overrideWithValue(
               statisticsRepository,
-            ),
-            screenActivityRecorderProvider.overrideWithValue(
-              screenActivityRecorder,
             ),
             timerRepositoryProvider.overrideWithValue(timerRepository),
             timerCommandDispatcherProvider.overrideWithValue(dispatcher),

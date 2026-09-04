@@ -1,7 +1,6 @@
 final class DailyStatistics {
   DailyStatistics({
     required this.localDateKey,
-    required this.screenOnDuration,
     required this.restDuration,
     required this.restCount,
     this.timelineSegments = const [],
@@ -10,27 +9,23 @@ final class DailyStatistics {
   factory DailyStatistics.empty(String localDateKey) {
     return DailyStatistics(
       localDateKey: localDateKey,
-      screenOnDuration: Duration.zero,
       restDuration: Duration.zero,
       restCount: 0,
     );
   }
 
   final String localDateKey;
-  final Duration screenOnDuration;
   final Duration restDuration;
   final int restCount;
   final List<DailyTimelineSegment> timelineSegments;
 
   DailyStatistics copyWith({
-    Duration? screenOnDuration,
     Duration? restDuration,
     int? restCount,
     List<DailyTimelineSegment>? timelineSegments,
   }) {
     return DailyStatistics(
       localDateKey: localDateKey,
-      screenOnDuration: screenOnDuration ?? this.screenOnDuration,
       restDuration: restDuration ?? this.restDuration,
       restCount: restCount ?? this.restCount,
       timelineSegments: timelineSegments ?? this.timelineSegments,

@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rest_eye/app/theme/rest_eye_spacing.dart';
-import 'package:rest_eye/core/build/app_build.dart';
+import 'package:rest_eye/core/config/app_build.dart';
 import 'package:rest_eye/features/settings/application/settings_controller.dart';
 import 'package:rest_eye/features/timer/application/ports/notification_gateway.dart';
 import 'package:rest_eye/features/timer/application/ports/platform_capabilities.dart';
+import 'package:rest_eye/features/timer/application/timer_dependencies.dart';
 import 'package:rest_eye/features/timer/domain/timer_phase.dart';
-import 'package:rest_eye/features/timer/domain/timer_policy.dart';
-import 'package:rest_eye/features/timer/domain/timer_snapshot.dart';
 import 'package:rest_eye/features/timer/presentation/timer_controller.dart';
 import 'package:rest_eye/features/timer/presentation/widgets/countdown_card.dart';
 import 'package:rest_eye/l10n/generated/app_localizations.dart';
@@ -158,33 +157,6 @@ class TimerPage extends ConsumerWidget {
     };
   }
 
-  static Duration _elapsedDuration(
-    TimerSnapshot snapshot,
-    Duration remaining,
-    Duration displayDuration,
-  ) {
-    if (snapshot.phase == TimerPhase.awaitingRest ||
-        snapshot.phase == TimerPhase.awaitingWork) {
-      return displayDuration.isNegative ? Duration.zero : displayDuration;
-    }
-    if (snapshot.phase == TimerPhase.resting &&
-        snapshot.cycleConfig.restCompletionBehavior ==
-            RestCompletionBehavior.continueRest &&
-        (snapshot.deadlineAtUtc == null ||
-            displayDuration > snapshot.cycleConfig.restDuration)) {
-      return displayDuration.isNegative ? Duration.zero : displayDuration;
-    }
-    final totalDuration = switch (snapshot.phase) {
-      TimerPhase.idle => Duration.zero,
-      TimerPhase.working => snapshot.cycleConfig.workDuration,
-      TimerPhase.resting => snapshot.cycleConfig.restDuration,
-      TimerPhase.awaitingRest => Duration.zero,
-      TimerPhase.awaitingWork => Duration.zero,
-    };
-    final elapsed = totalDuration - remaining;
-    return elapsed.isNegative ? Duration.zero : elapsed;
-  }
-
   static Color _phaseColor(
     BuildContext context,
     TimerPhase phase,
@@ -258,8 +230,7 @@ class _LiveCountdown extends ConsumerWidget {
       timerControllerProvider.select(
         (state) => (
           snapshot: state.snapshot,
-          remaining: state.remaining,
-          displayDuration: state.displayDuration,
+          displayElapsed: state.displayElapsed,
           progress: state.progress,
         ),
       ),
@@ -271,11 +242,7 @@ class _LiveCountdown extends ConsumerWidget {
       snapshot.phase,
       snapshot.executionStatus,
     );
-    final elapsed = TimerPage._elapsedDuration(
-      snapshot,
-      live.remaining,
-      live.displayDuration,
-    );
+    final elapsed = live.displayElapsed;
     final isResting =
         snapshot.phase == TimerPhase.resting ||
         snapshot.phase == TimerPhase.awaitingWork;
@@ -393,39 +360,111 @@ class _SummaryItem extends StatelessWidget {
 
 enum _QuickDurationKind { work, rest }
 
-class _QuickDurationDialog extends StatefulWidget {
+class _QuickDurationDialog extends ConsumerStatefulWidget {
   const _QuickDurationDialog({required this.kind, required this.initialValue});
 
   final _QuickDurationKind kind;
   final Duration initialValue;
 
   @override
-  State<_QuickDurationDialog> createState() => _QuickDurationDialogState();
+  ConsumerState<_QuickDurationDialog> createState() =>
+      _QuickDurationDialogState();
 }
 
-class _QuickDurationDialogState extends State<_QuickDurationDialog> {
-  late int _value;
+class _QuickDurationDialogState extends ConsumerState<_QuickDurationDialog> {
+  /// Slider-space value: seconds (debug or rest), minutes (work in release).
+  late double _value;
 
   bool get _isWork => widget.kind == _QuickDurationKind.work;
+
+  bool get _isDebugBuild => AppBuild.isDebugBuild;
+
+  double get _sliderMin => _isDebugBuild ? 5 : (_isWork ? 1 : 10);
+
+  double get _sliderMax => _isDebugBuild
+      ? AppBuild.debugDurationSliderMax.inSeconds.toDouble()
+      : (_isWork ? 180 : 600);
+
+  int get _divisions => _isDebugBuild ? 55 : (_isWork ? 179 : 59);
+
+  double get _step => (_sliderMax - _sliderMin) / _divisions;
 
   @override
   void initState() {
     super.initState();
-    final isDebugBuild = AppBuild.isDebugBuild;
-    _value = _isWork
-        ? isDebugBuild
-              ? widget.initialValue.inSeconds
-              : widget.initialValue.inMinutes
-        : widget.initialValue.inSeconds;
+    _value = _snap(
+      _isWork
+          ? _isDebugBuild
+                ? widget.initialValue.inSeconds.toDouble()
+                : widget.initialValue.inMinutes.toDouble()
+          : widget.initialValue.inSeconds.toDouble(),
+    );
+  }
+
+  /// Snaps a raw slider value onto the slider's division grid; rest in
+  /// release builds steps in 10 s increments.
+  double _snap(double raw) {
+    final clamped = raw.clamp(_sliderMin, _sliderMax);
+    if (!_isDebugBuild && !_isWork) {
+      return ((clamped / 10).round() * 10).toDouble();
+    }
+    return clamped;
+  }
+
+  void _adjust(int direction) {
+    setState(() {
+      _value = _snap(_value + direction * _step);
+    });
+  }
+
+  String _valueLabel(AppLocalizations strings) {
+    if (_isWork && !_isDebugBuild) {
+      return strings.settingsMinutesValue(_value.round());
+    }
+    return strings.settingsSecondsValue(_value.round());
+  }
+
+  Future<void> _save() async {
+    final strings = AppLocalizations.of(context);
+    // Saving a new duration stops a running timer (the new duration applies
+    // from the next cycle); warn before stopping so the interruption is
+    // explicit.
+    final timerActive = ref
+        .read(timerCommandDispatcherProvider)
+        .current
+        .isActive;
+    if (timerActive) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(strings.durationStopConfirmTitle),
+          content: Text(strings.durationStopConfirmMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(strings.actionCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(strings.actionSave),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+    final duration = _isDebugBuild
+        ? Duration(seconds: _value.round())
+        : _isWork
+        ? Duration(minutes: _value.round())
+        : Duration(seconds: _value.round());
+    Navigator.of(context).pop(duration);
   }
 
   @override
   Widget build(BuildContext context) {
     final strings = AppLocalizations.of(context);
-    final isDebugBuild = AppBuild.isDebugBuild;
-    final valueLabel = _isWork && !isDebugBuild
-        ? strings.settingsMinutesValue(_value)
-        : strings.settingsSecondsValue(_value);
+    final valueLabel = _valueLabel(strings);
     return AlertDialog(
       title: Text(
         _isWork
@@ -437,35 +476,38 @@ class _QuickDurationDialogState extends State<_QuickDurationDialog> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            strings.timerQuickDurationDescription,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          SizedBox(height: context.spacing.lg),
-          Text(
             valueLabel,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineSmall
                 ?.copyWith(color: Theme.of(context).colorScheme.primary),
           ),
-          Slider(
-            value: _value.toDouble(),
-            min: isDebugBuild ? 5 : (_isWork ? 1 : 10),
-            max: isDebugBuild
-                ? AppBuild.debugDurationSliderMax.inSeconds.toDouble()
-                : (_isWork ? 180 : 600),
-            divisions: isDebugBuild ? 55 : (_isWork ? 179 : 59),
-            label: valueLabel,
-            onChanged: (value) {
-              setState(() {
-                _value = isDebugBuild
-                    ? value.round()
-                    : _isWork
-                    ? value.round()
-                    : (value / 10).round() * 10;
-              });
-            },
+          Row(
+            children: [
+              IconButton(
+                tooltip: strings.durationDecrease,
+                onPressed: () => _adjust(-1),
+                icon: const Icon(Icons.remove_circle_outline),
+              ),
+              Expanded(
+                child: Slider(
+                  value: _value,
+                  min: _sliderMin,
+                  max: _sliderMax,
+                  divisions: _divisions,
+                  label: valueLabel,
+                  onChanged: (value) {
+                    setState(() {
+                      _value = _snap(value);
+                    });
+                  },
+                ),
+              ),
+              IconButton(
+                tooltip: strings.durationIncrease,
+                onPressed: () => _adjust(1),
+                icon: const Icon(Icons.add_circle_outline),
+              ),
+            ],
           ),
         ],
       ),
@@ -474,17 +516,7 @@ class _QuickDurationDialogState extends State<_QuickDurationDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: Text(strings.actionCancel),
         ),
-        FilledButton(
-          onPressed: () {
-            final duration = isDebugBuild
-                ? Duration(seconds: _value)
-                : _isWork
-                ? Duration(minutes: _value)
-                : Duration(seconds: _value);
-            Navigator.of(context).pop(duration);
-          },
-          child: Text(strings.actionSave),
-        ),
+        FilledButton(onPressed: _save, child: Text(strings.actionSave)),
       ],
     );
   }

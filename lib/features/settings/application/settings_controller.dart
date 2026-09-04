@@ -203,27 +203,23 @@ final class SettingsController extends AsyncNotifier<SettingsViewState> {
         clearSaveFailure: true,
       ),
     );
-    var persisted = false;
     try {
       await ref.read(settingsRepositoryProvider).save(target);
-      persisted = true;
       if (!ref.mounted) return;
-      final afterPersistence = state.value;
-      if (afterPersistence == null) return;
-      state = AsyncData(
-        afterPersistence.copyWith(
-          saved: target,
-          saving: true,
-          clearSaveFailure: true,
-        ),
-      );
+      // Keep `saved` at the last fully applied value until every runtime
+      // effect succeeds.  Persisting first is intentional (the repository is
+      // the source of truth), but advancing the UI's saved marker here would
+      // make a failed effect impossible to retry: the next attempt would see
+      // `previous == target` and skip the duration/notification diff.
       await ref.read(settingsChangeEffectsProvider).apply(previous, target);
       if (!ref.mounted) return;
       final latest = state.value;
       if (latest == null) return;
       final hasPendingValidChanges =
           latest.draft != target && latest.validationError == null;
-      state = AsyncData(latest.copyWith(saving: false, clearSaveFailure: true));
+      state = AsyncData(
+        latest.copyWith(saved: target, saving: false, clearSaveFailure: true),
+      );
       if (hasPendingValidChanges) {
         _autoSaveTimer?.cancel();
         _saveAgain = true;
@@ -238,21 +234,13 @@ final class SettingsController extends AsyncNotifier<SettingsViewState> {
       if (!ref.mounted) return;
       final latest = state.value ?? current;
       state = AsyncData(
-        latest.copyWith(
-          saved: persisted ? target : latest.saved,
-          saving: false,
-          saveFailureCode: failure.code,
-        ),
+        latest.copyWith(saving: false, saveFailureCode: failure.code),
       );
     } catch (_) {
       if (!ref.mounted) return;
       final latest = state.value ?? current;
       state = AsyncData(
-        latest.copyWith(
-          saved: persisted ? target : latest.saved,
-          saving: false,
-          saveFailureCode: 'unexpected',
-        ),
+        latest.copyWith(saving: false, saveFailureCode: 'unexpected'),
       );
     }
   }
