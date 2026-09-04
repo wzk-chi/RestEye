@@ -25,8 +25,10 @@ final class LocalNotificationGateway
 
   static const _startRestAction = 'startRest';
   static const _startWorkAction = 'startWork';
+  static const _stopTimerAction = 'stopTimer';
   static const _restCategory = 'restEyeRestActions';
   static const _workCategory = 'restEyeWorkActions';
+  static const _stopCategory = 'restEyeStopActions';
   static const _windowsAppUserModelId = 'RestEye.RestEye';
   static const _windowsGuid = 'f9bd2cd7-4f6c-4a16-b65d-2fbe306b77ef';
   static const _windowsIdentityChannel = MethodChannel(
@@ -79,6 +81,10 @@ final class LocalNotificationGateway
                 _startRestAction,
                 strings.notificationActionStartRest,
               ),
+              DarwinNotificationAction.plain(
+                _stopTimerAction,
+                strings.actionStopTimer,
+              ),
             ],
           ),
           DarwinNotificationCategory(
@@ -87,6 +93,19 @@ final class LocalNotificationGateway
               DarwinNotificationAction.plain(
                 _startWorkAction,
                 strings.actionStartWork,
+              ),
+              DarwinNotificationAction.plain(
+                _stopTimerAction,
+                strings.actionStopTimer,
+              ),
+            ],
+          ),
+          DarwinNotificationCategory(
+            _stopCategory,
+            actions: [
+              DarwinNotificationAction.plain(
+                _stopTimerAction,
+                strings.actionStopTimer,
               ),
             ],
           ),
@@ -301,45 +320,49 @@ final class LocalNotificationGateway
       'expectedPhase': notification.expectedPhase.name,
       'expiresAtUtc': notification.expiresAtUtc.toUtc().toIso8601String(),
     });
-    final androidActions = notification.hasStartRestAction
-        ? [
-            AndroidNotificationAction(
-              _startRestAction,
-              strings.notificationActionStartRest,
-              showsUserInterface: false,
-              cancelNotification: false,
-            ),
-          ]
-        : notification.hasStartWorkAction
-        ? [
-            AndroidNotificationAction(
-              _startWorkAction,
-              strings.actionStartWork,
-              showsUserInterface: false,
-              cancelNotification: false,
-            ),
-          ]
-        : const <AndroidNotificationAction>[];
-    final windowsActions = notification.hasStartRestAction
-        ? [
-            WindowsAction(
-              content: strings.notificationActionStartRest,
-              arguments: _windowsActionPayload(_startRestAction, notification),
-            ),
-          ]
-        : notification.hasStartWorkAction
-        ? [
-            WindowsAction(
-              content: strings.actionStartWork,
-              arguments: _windowsActionPayload(_startWorkAction, notification),
-            ),
-          ]
-        : const <WindowsAction>[];
+    final androidActions = <AndroidNotificationAction>[
+      if (notification.hasStartRestAction)
+        AndroidNotificationAction(
+          _startRestAction,
+          strings.notificationActionStartRest,
+          showsUserInterface: false,
+          cancelNotification: false,
+        ),
+      if (notification.hasStartWorkAction)
+        AndroidNotificationAction(
+          _startWorkAction,
+          strings.actionStartWork,
+          showsUserInterface: false,
+          cancelNotification: false,
+        ),
+      AndroidNotificationAction(
+        _stopTimerAction,
+        strings.actionStopTimer,
+        showsUserInterface: false,
+        cancelNotification: false,
+      ),
+    ];
+    final windowsActions = <WindowsAction>[
+      if (notification.hasStartRestAction)
+        WindowsAction(
+          content: strings.notificationActionStartRest,
+          arguments: _windowsActionPayload(_startRestAction, notification),
+        ),
+      if (notification.hasStartWorkAction)
+        WindowsAction(
+          content: strings.actionStartWork,
+          arguments: _windowsActionPayload(_startWorkAction, notification),
+        ),
+      WindowsAction(
+        content: strings.actionStopTimer,
+        arguments: _windowsActionPayload(_stopTimerAction, notification),
+      ),
+    ];
     final darwinCategory = notification.hasStartRestAction
         ? _restCategory
         : notification.hasStartWorkAction
         ? _workCategory
-        : null;
+        : _stopCategory;
     final channelSuffix = notification.vibrationEnabled ? 'vibration' : 'quiet';
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -608,6 +631,8 @@ NotificationActionRequest? parseLocalNotificationActionResponse(
         NotificationActionType.startRest,
       LocalNotificationGateway._startWorkAction =>
         NotificationActionType.startWork,
+      LocalNotificationGateway._stopTimerAction =>
+        NotificationActionType.stopTimer,
       _ => null,
     };
     if (type == null) return null;

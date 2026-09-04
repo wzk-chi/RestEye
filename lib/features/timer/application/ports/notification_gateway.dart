@@ -2,7 +2,7 @@ import 'package:rest_eye/features/timer/domain/timer_phase.dart';
 
 enum NotificationKind { workComplete, restReminder, restComplete }
 
-enum NotificationActionType { startRest, startWork }
+enum NotificationActionType { startRest, startWork, stopTimer }
 
 enum NotificationPermissionStatus {
   granted,

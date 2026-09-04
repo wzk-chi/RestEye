@@ -101,6 +101,11 @@ final class NotificationActionCoordinator {
         nextCycleId: _dispatcher.createId('cycle'),
         nextCycleConfig: timerCycleConfigFromSettings(settings),
       ),
+      NotificationActionType.stopTimer => StopTimerCommand(
+        commandId: action.commandId,
+        occurredAtUtc: action.occurredAtUtc,
+        expectedCycleId: action.cycleId,
+      ),
     };
   }
 
