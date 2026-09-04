@@ -27,7 +27,11 @@ final class LocalNotificationGateway implements NotificationGateway {
   static const _startWorkAction = 'startWork';
   static const _restCategory = 'restEyeRestActions';
   static const _workCategory = 'restEyeWorkActions';
+  static const _windowsAppUserModelId = 'RestEye.RestEye';
   static const _windowsGuid = 'f9bd2cd7-4f6c-4a16-b65d-2fbe306b77ef';
+  static const _windowsIdentityChannel = MethodChannel(
+    'dev.resteye/notification_identity',
+  );
 
   final SettingsRepository _settingsRepository;
   final AppClock _clock;
@@ -93,7 +97,7 @@ final class LocalNotificationGateway implements NotificationGateway {
       macOS: darwin,
       windows: WindowsInitializationSettings(
         appName: strings.appTitle,
-        appUserModelId: 'RestEye.RestEye',
+        appUserModelId: _windowsAppUserModelId,
         guid: _windowsGuid,
         iconPath: windowsIconPath,
       ),
@@ -104,6 +108,13 @@ final class LocalNotificationGateway implements NotificationGateway {
       onDidReceiveBackgroundNotificationResponse:
           onDidReceiveBackgroundNotificationResponse,
     );
+    if (windowsIconPath != null) {
+      await _windowsIdentityChannel.invokeMethod<void>('register', {
+        'appUserModelId': _windowsAppUserModelId,
+        'displayName': strings.appTitle,
+        'iconPath': windowsIconPath,
+      });
+    }
     final launchDetails = await _plugin.getNotificationAppLaunchDetails();
     final response = launchDetails?.notificationResponse;
     if (launchDetails?.didNotificationLaunchApp == true && response != null) {
@@ -119,7 +130,10 @@ final class LocalNotificationGateway implements NotificationGateway {
         'data/flutter_assets/assets/brand/resteye_icon.png',
       ),
     );
-    return icon.existsSync() ? icon.path : null;
+    if (!icon.existsSync()) {
+      throw StateError('Windows notification icon was not found: ${icon.path}');
+    }
+    return icon.path;
   }
 
   @override

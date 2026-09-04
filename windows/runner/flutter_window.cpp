@@ -57,6 +57,39 @@ std::optional<std::string> ReadUtf8StringArgument(
   return *value;
 }
 
+LSTATUS WriteRegistryString(HKEY key,
+                            const wchar_t* value_name,
+                            const std::wstring& value) {
+  return RegSetValueExW(
+      key, value_name, 0, REG_SZ,
+      reinterpret_cast<const BYTE*>(value.c_str()),
+      static_cast<DWORD>((value.size() + 1) * sizeof(wchar_t)));
+}
+
+LSTATUS RegisterNotificationIdentity(const std::wstring& app_user_model_id,
+                                     const std::wstring& display_name,
+                                     const std::wstring& icon_path) {
+  const auto icon_attributes = GetFileAttributesW(icon_path.c_str());
+  if (icon_attributes == INVALID_FILE_ATTRIBUTES ||
+      (icon_attributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
+    return ERROR_FILE_NOT_FOUND;
+  }
+
+  const std::wstring subkey =
+      L"Software\\Classes\\AppUserModelId\\" + app_user_model_id;
+  HKEY key = nullptr;
+  auto status = RegCreateKeyExW(HKEY_CURRENT_USER, subkey.c_str(), 0, nullptr,
+                                0, KEY_SET_VALUE, nullptr, &key, nullptr);
+  if (status != ERROR_SUCCESS) return status;
+
+  status = WriteRegistryString(key, L"DisplayName", display_name);
+  if (status == ERROR_SUCCESS) {
+    status = WriteRegistryString(key, L"IconUri", icon_path);
+  }
+  RegCloseKey(key);
+  return status;
+}
+
 void CopyTrayText(wchar_t* destination,
                   size_t destination_length,
                   const std::wstring& value) {
@@ -188,6 +221,50 @@ bool FlutterWindow::OnCreate() {
         result->NotImplemented();
       });
 
+  notification_identity_method_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          messenger, "dev.resteye/notification_identity",
+          &flutter::StandardMethodCodec::GetInstance());
+  notification_identity_method_channel_->SetMethodCallHandler(
+      [](const flutter::MethodCall<flutter::EncodableValue>& call,
+         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+             result) {
+        if (call.method_name() != "register") {
+          result->NotImplemented();
+          return;
+        }
+        const auto* arguments =
+            call.arguments() == nullptr
+                ? nullptr
+                : std::get_if<flutter::EncodableMap>(call.arguments());
+        if (arguments == nullptr) {
+          result->Error("invalid_arguments",
+                        "Expected a notification identity map.");
+          return;
+        }
+        const auto app_user_model_id =
+            ReadStringArgument(*arguments, "appUserModelId");
+        const auto display_name =
+            ReadStringArgument(*arguments, "displayName");
+        const auto icon_path = ReadStringArgument(*arguments, "iconPath");
+        if (!app_user_model_id || !display_name || !icon_path ||
+            app_user_model_id->empty() || display_name->empty() ||
+            icon_path->empty()) {
+          result->Error("invalid_arguments",
+                        "Notification identity values are required.");
+          return;
+        }
+        const auto status = RegisterNotificationIdentity(
+            *app_user_model_id, *display_name, *icon_path);
+        if (status != ERROR_SUCCESS) {
+          result->Error("registration_failed",
+                        "Could not register the notification identity.",
+                        flutter::EncodableValue(static_cast<int>(status)));
+          return;
+        }
+        result->Success();
+      });
+
   screen_state_method_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
           messenger, "dev.resteye/screen_state",
@@ -289,6 +366,7 @@ void FlutterWindow::OnDestroy() {
     window_behavior_event_sink_.reset();
   }
   window_behavior_method_channel_.reset();
+  notification_identity_method_channel_.reset();
   window_behavior_event_channel_.reset();
   screen_state_method_channel_.reset();
   screen_state_event_channel_.reset();

@@ -37,8 +37,11 @@ Uninstallable=yes
 Source: "{#SourceDir}\\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\\RestEye"; Filename: "{app}\\rest_eye.exe"; IconFilename: "{app}\\rest_eye.exe"; WorkingDir: "{app}"
-Name: "{autodesktop}\\RestEye"; Filename: "{app}\\rest_eye.exe"; IconFilename: "{app}\\rest_eye.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autoprograms}\\RestEye"; Filename: "{app}\\rest_eye.exe"; IconFilename: "{app}\\rest_eye.exe"; WorkingDir: "{app}"; AppUserModelID: "RestEye.RestEye"
+Name: "{autodesktop}\\RestEye"; Filename: "{app}\\rest_eye.exe"; IconFilename: "{app}\\rest_eye.exe"; WorkingDir: "{app}"; AppUserModelID: "RestEye.RestEye"; Tasks: desktopicon
+
+[Registry]
+Root: HKCU; Subkey: "Software\\Classes\\AppUserModelId\\RestEye.RestEye"; ValueType: string; ValueName: "IconUri"; ValueData: "{app}\\data\\flutter_assets\\assets\\brand\\resteye_icon.png"; Flags: uninsdeletevalue
 
 [Tasks]
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加快捷方式："

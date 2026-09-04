@@ -39,6 +39,8 @@ class FlutterWindow : public Win32Window {
       screen_state_method_channel_;
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       window_behavior_method_channel_;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      notification_identity_method_channel_;
   std::unique_ptr<flutter::EventChannel<flutter::EncodableValue>>
       window_behavior_event_channel_;
   std::unique_ptr<flutter::EventSink<flutter::EncodableValue>>
