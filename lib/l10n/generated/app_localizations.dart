@@ -293,7 +293,7 @@ abstract class AppLocalizations {
   /// No description provided for @actionSave.
   ///
   /// In zh, this message translates to:
-  /// **'保存设置'**
+  /// **'保存'**
   String get actionSave;
 
   /// No description provided for @actionCancel.

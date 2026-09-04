@@ -114,7 +114,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get actionEndRest => '结束休息';
 
   @override
-  String get actionSave => '保存设置';
+  String get actionSave => '保存';
 
   @override
   String get actionCancel => '取消';

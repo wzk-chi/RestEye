@@ -119,7 +119,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get actionEndRest => 'End rest';
 
   @override
-  String get actionSave => 'Save settings';
+  String get actionSave => 'Save';
 
   @override
   String get actionCancel => 'Cancel';

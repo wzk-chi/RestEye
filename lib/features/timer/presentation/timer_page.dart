@@ -85,10 +85,16 @@ class TimerPage extends ConsumerWidget {
               _CycleSummary(
                 workDuration: _durationText(strings, workDuration),
                 restDuration: _durationText(strings, restDuration),
-                onEditWorkDuration: () =>
-                    _showQuickDurationDialog(context, _QuickDurationKind.work),
-                onEditRestDuration: () =>
-                    _showQuickDurationDialog(context, _QuickDurationKind.rest),
+                onEditWorkDuration: () => _showQuickDurationDialog(
+                  context,
+                  ref,
+                  _QuickDurationKind.work,
+                ),
+                onEditRestDuration: () => _showQuickDurationDialog(
+                  context,
+                  ref,
+                  _QuickDurationKind.rest,
+                ),
               ),
               SizedBox(height: context.spacing.lg),
               _TimerActions(
@@ -217,12 +223,28 @@ class TimerPage extends ConsumerWidget {
 
   Future<void> _showQuickDurationDialog(
     BuildContext context,
+    WidgetRef ref,
     _QuickDurationKind kind,
-  ) {
-    return showDialog<void>(
+  ) async {
+    final settings = ref.read(settingsControllerProvider).value?.draft;
+    if (settings == null) return;
+    final selected = await showDialog<Duration>(
       context: context,
-      builder: (_) => _QuickDurationDialog(kind: kind),
+      builder: (_) => _QuickDurationDialog(
+        kind: kind,
+        initialValue: kind == _QuickDurationKind.work
+            ? settings.workDuration
+            : settings.restDuration,
+      ),
     );
+    if (selected == null || !context.mounted) return;
+    final controller = ref.read(settingsControllerProvider.notifier);
+    switch (kind) {
+      case _QuickDurationKind.work:
+        controller.setWorkDuration(selected);
+      case _QuickDurationKind.rest:
+        controller.setRestDuration(selected);
+    }
   }
 }
 
@@ -370,93 +392,87 @@ class _SummaryItem extends StatelessWidget {
 
 enum _QuickDurationKind { work, rest }
 
-class _QuickDurationDialog extends ConsumerWidget {
-  const _QuickDurationDialog({required this.kind});
+class _QuickDurationDialog extends StatefulWidget {
+  const _QuickDurationDialog({required this.kind, required this.initialValue});
 
   final _QuickDurationKind kind;
+  final Duration initialValue;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  State<_QuickDurationDialog> createState() => _QuickDurationDialogState();
+}
+
+class _QuickDurationDialogState extends State<_QuickDurationDialog> {
+  late int _value;
+
+  bool get _isWork => widget.kind == _QuickDurationKind.work;
+
+  @override
+  void initState() {
+    super.initState();
+    _value = _isWork
+        ? widget.initialValue.inMinutes
+        : widget.initialValue.inSeconds;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final strings = AppLocalizations.of(context);
-    final asyncState = ref.watch(settingsControllerProvider);
-    return asyncState.when(
-      data: (state) {
-        final isWork = kind == _QuickDurationKind.work;
-        final value = isWork
-            ? state.draft.workDuration.inMinutes.toDouble()
-            : state.draft.restDuration.inSeconds.toDouble();
-        final valueLabel = isWork
-            ? strings.settingsMinutesValue(value.round())
-            : strings.settingsSecondsValue(value.round());
-        return AlertDialog(
-          title: Text(
-            isWork
-                ? strings.timerQuickWorkDurationTitle
-                : strings.timerQuickRestDurationTitle,
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                strings.timerQuickDurationDescription,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              SizedBox(height: context.spacing.lg),
-              Text(
-                valueLabel,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineSmall
-                    ?.copyWith(color: Theme.of(context).colorScheme.primary),
-              ),
-              Slider(
-                value: value,
-                min: isWork ? 1 : 10,
-                max: isWork ? 180 : 600,
-                divisions: isWork ? 179 : 59,
-                label: valueLabel,
-                onChanged: (value) {
-                  final controller = ref.read(
-                    settingsControllerProvider.notifier,
-                  );
-                  if (isWork) {
-                    controller.setWorkDuration(
-                      Duration(minutes: value.round()),
-                    );
-                  } else {
-                    controller.setRestDuration(
-                      Duration(seconds: (value / 10).round() * 10),
-                    );
-                  }
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(strings.actionDone),
-            ),
-          ],
-        );
-      },
-      loading: () => const AlertDialog(
-        content: SizedBox.square(
-          dimension: 48,
-          child: CircularProgressIndicator(),
-        ),
+    final valueLabel = _isWork
+        ? strings.settingsMinutesValue(_value)
+        : strings.settingsSecondsValue(_value);
+    return AlertDialog(
+      title: Text(
+        _isWork
+            ? strings.timerQuickWorkDurationTitle
+            : strings.timerQuickRestDurationTitle,
       ),
-      error: (_, _) => AlertDialog(
-        content: Text(strings.commandFailed),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(strings.actionDone),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            strings.timerQuickDurationDescription,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          SizedBox(height: context.spacing.lg),
+          Text(
+            valueLabel,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineSmall
+                ?.copyWith(color: Theme.of(context).colorScheme.primary),
+          ),
+          Slider(
+            value: _value.toDouble(),
+            min: _isWork ? 1 : 10,
+            max: _isWork ? 180 : 600,
+            divisions: _isWork ? 179 : 59,
+            label: valueLabel,
+            onChanged: (value) {
+              setState(() {
+                _value = _isWork ? value.round() : (value / 10).round() * 10;
+              });
+            },
           ),
         ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(strings.actionCancel),
+        ),
+        FilledButton(
+          onPressed: () {
+            final duration = _isWork
+                ? Duration(minutes: _value)
+                : Duration(seconds: _value);
+            Navigator.of(context).pop(duration);
+          },
+          child: Text(strings.actionSave),
+        ),
+      ],
     );
   }
 }
