@@ -23,6 +23,12 @@ final class AppSettingsChangeEffects implements SettingsChangeEffects {
 
   @override
   Future<void> apply(AppSettings previous, AppSettings current) async {
+    final timerDurationChanged =
+        previous.workDuration != current.workDuration ||
+        previous.restDuration != current.restDuration;
+    if (timerDurationChanged) {
+      await _dispatcher.stopIfActive(source: 'settings-duration-change');
+    }
     if (previous.fixedPortraitEnabled != current.fixedPortraitEnabled) {
       await _orientationGateway.setFixedPortrait(
         enabled: current.fixedPortraitEnabled,
