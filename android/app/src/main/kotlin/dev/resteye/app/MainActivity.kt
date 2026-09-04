@@ -15,10 +15,13 @@ class MainActivity : FlutterActivity(), EventChannel.StreamHandler {
     companion object {
         private const val METHOD_CHANNEL = "dev.resteye/screen_state"
         private const val EVENT_CHANNEL = "dev.resteye/screen_state/events"
+        private const val APP_EXIT_CHANNEL = "dev.resteye/app_exit"
     }
 
     private var eventSink: EventChannel.EventSink? = null
+    private var appExitChannel: MethodChannel? = null
     private var receiverRegistered = false
+    private var exitPending = false
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -46,6 +49,10 @@ class MainActivity : FlutterActivity(), EventChannel.StreamHandler {
             flutterEngine.dartExecutor.binaryMessenger,
             EVENT_CHANNEL,
         ).setStreamHandler(this)
+        appExitChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            APP_EXIT_CHANNEL,
+        )
         registerScreenReceiver()
     }
 
@@ -55,7 +62,42 @@ class MainActivity : FlutterActivity(), EventChannel.StreamHandler {
             receiverRegistered = false
         }
         eventSink = null
+        appExitChannel = null
         super.cleanUpFlutterEngine(flutterEngine)
+    }
+
+    override fun popSystemNavigator(): Boolean {
+        val channel = appExitChannel ?: return false
+        if (exitPending) return true
+        exitPending = true
+        channel.invokeMethod(
+            "prepareForExit",
+            null,
+            object : MethodChannel.Result {
+                override fun success(result: Any?) = finishAfterCleanup()
+
+                override fun error(
+                    errorCode: String,
+                    errorMessage: String?,
+                    errorDetails: Any?,
+                ) = finishAfterCleanup()
+
+                override fun notImplemented() = finishAfterCleanup()
+            },
+        )
+        return true
+    }
+
+    override fun setFrameworkHandlesBack(frameworkHandlesBack: Boolean) {
+        // Keep root back navigation in Flutter so SystemNavigator.pop can wait
+        // for the same cleanup handshake used by the desktop hosts.
+        super.setFrameworkHandlesBack(true)
+    }
+
+    private fun finishAfterCleanup() {
+        runOnUiThread {
+            if (!isFinishing) finish()
+        }
     }
 
     override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {

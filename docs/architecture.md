@@ -56,6 +56,7 @@ lib/
 ├── core/
 │   ├── clock/                        # AppClock、系统时钟
 │   ├── error/                        # AppFailure 及错误分类
+│   ├── lifecycle/                    # 可等待的应用退出契约
 │   └── logging/                      # AppLogger
 ├── features/
 │   ├── timer/{domain,application,data,presentation}/
@@ -73,7 +74,7 @@ Android 原生代码位于 `android/`，Windows runner、屏幕状态桥接和�
 
 ### 5.1 App 与 Bootstrap
 
-`main.dart` 只负责调用 `bootstrap()`。bootstrap 创建数据库、repositories、clock、notification gateway、screen-state gateway、dispatcher 和 runtime，并通过 Riverpod Provider overrides 注入；它不处理按钮逻辑、计时规则或翻译文案。`AppRuntime` 统一拥有并按顺序释放订阅、计时器、通知、平台桥接和数据库资源；释放必须可等待、幂等，单个组件失败不能阻断其余清理。
+`main.dart` 只负责调用 `bootstrap()`。bootstrap 创建数据库、repositories、clock、notification gateway、screen-state gateway、dispatcher 和 runtime，并通过 Riverpod Provider overrides 注入；它不处理按钮逻辑、计时规则或翻译文案。`AppRuntime` 统一拥有并按顺序释放订阅、计时器、通知、平台桥接和数据库资源；释放必须可等待、幂等，重复调用必须等待同一个清理 Future，单个组件失败不能阻断其余清理。`AppExitGateway` 将原生真正退出请求桥接到这条清理链，原生宿主必须等清理完成后再结束进程。
 
 ### 5.2 Core
 
@@ -95,7 +96,7 @@ UI 按钮、通知动作、锁屏暂停和恢复流程都必须复用同一命�
 
 ### 5.5 Data 与 Infrastructure
 
-feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model 与 Drift row 之间转换；`infrastructure/database/` 只负责数据库、表和迁移。当前 schema version 为 13，`screen_activity_state` 保存尚未关闭的亮屏区间，`app_settings_table.pause_when_locked` 保存锁屏暂停偏好，`fixed_portrait_enabled` 保存 Android 固定竖屏偏好，`minimize_to_tray_on_close` 保存 Windows 关闭行为偏好，四类通知开关默认均为 `true`，`rest_completion_behavior` 保存休息自然结束后的处理方式，新增字段保存未工作提醒间隔、休息超时时间和休息超时后处理，`timer_snapshots_table.last_heartbeat_at_utc` 保存主进程最后确认存活的时间。`activity_events_table.local_date_key`、`occurred_at_utc` 和 pending command 的终态/时间列有索引，以支持统计查询和恢复扫描。v6 将旧列名平滑迁移为新语义，v7 为既有设置补充托盘偏好，v8 移除已废弃的自动模式字段，v9 为既有设置补充三类通知开关，v10 增加查询索引，v11 增加休息完成处理设置，v12 增加进程心跳，v13 增加休息超时配置和未工作重复提醒，不清除其他已有设置。计时快照、关键事件和 inbox command 的状态变更必须使用事务；恢复事件通过 Drift batch 写入，终态 inbox command 保留 30 天后清理，未处理命令恢复扫描最多读取 10,000 条；持久化失败不得发布未提交的内存状态。数据库升级必须增加显式 migration，禁止删除用户数据或通过重建数据库“修复”坏数据。
+feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model 与 Drift row 之间转换；`infrastructure/database/` 只负责数据库、表和迁移。当前 schema version 为 13，`screen_activity_state` 保存尚未关闭的亮屏区间，`app_settings_table.pause_when_locked` 保存锁屏暂停偏好，`fixed_portrait_enabled` 保存 Android 固定竖屏偏好，`minimize_to_tray_on_close` 保存 Windows 关闭行为偏好，四类通知开关默认均为 `true`，`rest_completion_behavior` 保存休息自然结束后的处理方式，新增字段保存未工作提醒间隔、休息超时时间和休息超时后处理。`timer_snapshots_table.last_heartbeat_at_utc` 是 schema v12 遗留的兼容字段，新版本不再读取或更新；保留它是为了避免无收益的删除迁移。`activity_events_table.local_date_key`、`occurred_at_utc` 和 pending command 的终态/时间列有索引，以支持统计查询和恢复扫描。v6 将旧列名平滑迁移为新语义，v7 为既有设置补充托盘偏好，v8 移除已废弃的自动模式字段，v9 为既有设置补充三类通知开关，v10 增加查询索引，v11 增加休息完成处理设置，v12 曾增加进程心跳字段，v13 增加休息超时配置和未工作重复提醒，不清除其他已有设置。计时快照、关键事件和 inbox command 的状态变更必须使用事务；恢复事件通过 Drift batch 写入，终态 inbox command 保留 30 天后清理，未处理命令恢复扫描最多读取 10,000 条；持久化失败不得发布未提交的内存状态。数据库升级必须增加显式 migration，禁止删除用户数据或通过重建数据库“修复”坏数据。
 
 ### 5.6 Presentation
 
@@ -117,7 +118,7 @@ feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model
 
 工作达到设定时长后进入 `awaitingRest` 并发出休息提醒：主进度固定为 100%，显示的“已工作”时长继续累加，等待期间视为超时工作。开始休息、跳过休息、停止计时或等待超时结束该阶段时，必须将超时工作追加为 `workCompleted` 事件。休息达到设定时长时必须发出工作提醒，并按当前轮 `restCompletionBehavior` 处理：`startWork` 进入下一轮工作，`stopTimer` 回到 `idle`，`continueRest` 进入 `awaitingWork`。`awaitingWork` 主进度保持 100%，显示的“已休息”时长继续累加，按 `missedWorkReminderInterval` 重复提醒；达到 `restTimeout` 后按 `restTimeoutBehavior` 进入下一轮或结束计时。休息中的“开始工作”操作结束当前休息并进入下一轮，计划休息及超时休息均计入休息统计。超时行为由当前轮配置快照决定，设置保存只影响下一轮。
 
-所有持久化 deadline 使用 UTC 的 `startedAtUtc`、`deadlineAtUtc` 和 `nextReminderAtUtc`。进程存活时首页正计时和进度使用单调 elapsed，UI 刷新不是计时来源；工作与等待休息阶段显示累计已工作时长，休息与等待工作阶段显示累计已休息时长。应用启动或恢复时必须依据当前 UTC 做 reconciliation；发现上一进程遗留的活动计时时，以最后心跳作为截止点，不能把离线时间计入工作或休息。屏幕状态为 `unknown` 时只能发布能力降级，绝不能当作 `off`，也不能关闭亮屏统计区间或改变计时状态。
+所有持久化 deadline 使用 UTC 的 `startedAtUtc`、`deadlineAtUtc` 和 `nextReminderAtUtc`。进程存活时首页正计时和进度使用单调 elapsed，UI 刷新不是计时来源；工作与等待休息阶段显示累计已工作时长，休息与等待工作阶段显示累计已休息时长。活动计时不得为了存活探测或 UI 刷新执行周期磁盘写入。应用启动或恢复时必须依据当前 UTC 做 reconciliation；发现上一进程遗留的活动计时时，以当前快照最近一次已提交的阶段起点 `startedAtUtc` 为保守截止点，不能把未知的离线时间计入工作或休息。屏幕状态为 `unknown` 时只能发布能力降级，绝不能当作 `off`，也不能关闭亮屏统计区间或改变计时状态。
 
 ## 7. 持久化与统计口径
 
@@ -137,17 +138,22 @@ feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model
 
 平台插件和原生类型只能出现在 `lib/platform/`、对应 feature 的实现层或原生 host 目录。application 只依赖这些纯 Dart 契约：
 
-- `NotificationGateway`：初始化、权限、调度、取消、活动/待处理通知查询和动作流。
+- `NotificationGateway`：初始化、权限、调度、取消、活动/待处理通知查询和动作流；`ActiveNotificationQueryCapability` 额外声明空 active 查询能否作为通知不存在的权威证据。
 - `ScreenStateGateway`：当前状态和变化流，状态为 `on`、`dimmed`、`off` 或 `unknown`。
-- `LifecycleGateway`：前台、后台、恢复和退出事件。
+- `LifecycleGateway`：前台、后台、恢复和宿主 detach 事件。
+- `AppExitGateway`：接收可等待的真正退出请求，并在 runtime 清理完成后允许原生宿主结束进程。
 - `WindowBehaviorGateway`：同步 Windows/macOS 关闭时保留到托盘/菜单栏的偏好、菜单本地化文案、动态计时菜单项，并接收原生菜单动作。
 - `PlatformCapabilities`：声明通知、通知动作、屏幕状态、Android 震动、托盘和窗口能力。
 
 三端屏幕状态使用统一通道：`dev.resteye/screen_state` 与 `dev.resteye/screen_state/events`。在计时语义中，`off` 表示设备已锁定、不可交互，不表示显示器单独熄灭。Android 使用 `KeyguardManager.isKeyguardLocked` 读取锁屏状态，并监听 `ACTION_SCREEN_ON`、`ACTION_SCREEN_OFF` 和 `ACTION_USER_PRESENT`；`ACTION_USER_PRESENT` 表示用户完成解锁，不能只用 `PowerManager.isInteractive` 推断锁屏。Windows 使用 `WTSRegisterSessionNotification` 与 `WM_WTSSESSION_CHANGE` 的 `WTS_SESSION_LOCK`/`WTS_SESSION_UNLOCK`，并以 `Winlogon` 输入桌面轮询作为兜底；WTS 锁屏/解锁事件是权威信号，锁屏期间轮询不得将过渡中的输入桌面误判为解锁；macOS 使用 `DistributedNotificationCenter` 的 `com.apple.screenIsLocked`/`com.apple.screenIsUnlocked`，并用 `CGSessionCopyCurrentDictionary` 读取启动和监听建立时状态。显示器单独休眠不会触发锁屏暂停。原生实现必须清理 receiver、observer、event sink 和 method handler。
 
+真正退出使用统一握手：Windows 与 macOS 通过 Flutter 的可等待退出请求等待 `AppRuntime.dispose()`；Android 根路由返回时由 `MainActivity.popSystemNavigator()` 通过 `dev.resteye/app_exit` 请求同一清理链，收到结果后再结束 Activity。Android 切到后台、桌面窗口隐藏、最小化到托盘/菜单栏和锁屏均不触发退出清理；生命周期 `detached` 只作为宿主未能握手时的尽力收尾。任务管理器强杀、系统回收、崩溃和断电不保证回调，相关恢复边界遵循 [ADR 0001](adr/0001-graceful-exit-without-heartbeats.md)。
+
 通知必须由已提交快照和设置推导为期望集合，并由 reconciler 幂等同步。`restReminderEnabled` 控制工作时间用完时发出的休息提醒，`missedRestReminderEnabled` 控制 `awaitingRest` 的重复提醒；`workReminderEnabled` 控制休息时间用完时发出的工作提醒，`missedWorkReminderEnabled` 控制 `awaitingWork` 的重复提醒。关闭任一开关都必须取消对应的待发通知。通知 ID 使用 `cycleId + effectType + occurrence` 的确定性哈希；Android 休息提醒包含“开始休息”和“跳过”动作，并根据设置选择震动/静默 channel。Android 声明 `SCHEDULE_EXACT_ALARM`；有精确闹钟权限时使用 `exactAllowWhileIdle`，否则安全降级为 `inexactAllowWhileIdle`，不能因精确权限缺失而阻断提醒。Windows 使用系统通知能力并明确请求系统默认提示音。Windows Toast XML 固定按 `visual → audio → actions` 顺序生成，避免系统显示通知但忽略声音；macOS 使用各自系统通知能力。Windows runner 使用 `Shell_NotifyIconW` 注册原生托盘图标，macOS 使用 `NSStatusItem` 注册菜单栏图标；两端均提供本地化“打开”和“退出”，且不在这两个菜单标题中重复应用名称。关闭行为开启时窗口只隐藏，打开恢复窗口，退出允许真正结束进程。Dart 通过 `dev.resteye/window_behavior` 的 `setTrayMenu` 一次性提交 tooltip、打开/退出文案和当前计时菜单项；原生端只显示列表，并通过 `dev.resteye/window_behavior/events` 回传稳定 action id。回传动作必须重新进入 `TimerController`/`TimerCommandDispatcher`，不能在 Swift/C++ 中直接修改计时状态。通知声音最终仍受操作系统的应用通知声音、系统音量和专注助手策略控制。通知、权限或屏幕状态不可用时进入明确的 degraded 状态，不能阻断计时或静默修改用户数据。
 
-通知实现补充：通知 ID 使用 `cycleId + effectType + absolute scheduledAtUtc` 的确定性哈希，使连续对账只处理新增或到期项目；震动/语言设置变化会强制重写现有计划。通知 gateway 接收 reconciler 已加载的设置，批次内复用本地化文案和 Android 调度模式，避免每条通知重复查询。到达截止点时，若 Android 定时通知仍处于 pending 状态，不得在对账器中取消并立即重排程，以避免与 `ScheduledNotificationReceiver` 竞态；仅当 pending 和活动通知均不存在时，才执行到期通知补发。Android 定时提醒使用普通通知样式：不设置 `timeoutAfter`，不因点击自动清除，允许用户手动划掉；顶部 heads-up 浮层按系统策略消退，但通知栏中的提醒应保留到用户处理或业务状态使其过期。点击通知正文可以打开 RestEye；“开始休息”和“跳过休息”按钮必须在后台 isolate 中通过共享 Drift 数据库重新进入 inbox、dispatcher 和 reducer 管线，不得拉起界面。主 isolate 恢复时需要重新读取持久化快照，以接收后台动作已经提交的状态。
+通知实现补充：通知 ID 使用 `cycleId + effectType + absolute scheduledAtUtc` 的确定性哈希，使连续对账只处理新增或到期项目；通知按钮命令 ID 由通知 ID、轮次和动作确定性生成，重复回调进入同一 inbox 项。震动/语言设置变化只强制重写未来的 pending 计划，已经到期或活动中的通知不得重放。通知 gateway 接收 reconciler 已加载的设置，批次内复用本地化文案和 Android 调度模式，避免每条通知重复查询。每次对账在查询系统 pending/active 集合后必须重新读取持久化计时快照，调用方传入的快照只能作为 transition 提示，不能覆盖其他 isolate 已提交的新 revision。到达截止点时，若定时通知仍处于 pending 状态，不得在对账器中取消并立即重排程，以避免与原生通知接收器竞态；reconciler 对已由 gateway 接受或从系统 inventory 观察到的确定性通知 ID 建立进程内 delivery fence，ID 到期后只消费一次。只有平台的 active 查询具有权威性、且通知从未进入 delivery fence 时，pending 与 active 同时缺失才允许触发到期补发；非权威空列表不能作为通知不存在的证据。Windows gateway 通过 package identity 判断 active 查询能力：MSIX 构建可将查询视为权威，当前 Debug 与 Inno Setup 非打包构建的查询恒为空，因此按非权威结果处理；Android 和 macOS 继续使用原生 active 查询，若插件报告不支持或查询失败则安全降级为非权威。按钮回调一到达 gateway 就先按通知 ID 标记为处理中，使 Android、Windows 和 macOS 的并发对账都不会把系统已经移除或正在处理的通知误判为漏发；计时命令提交后的新状态对账负责取消该通知并释放标记。Android 通知按钮禁止在原生回调交给 Dart 之前自动取消，确保后台 isolate 按“提交状态，再取消通知”的顺序处理。
+
+Android 定时提醒使用普通通知样式：不设置 `timeoutAfter`，不因点击正文自动清除，允许用户手动划掉；顶部 heads-up 浮层按系统策略消退，但通知栏中的提醒应保留到用户处理或业务状态使其过期。点击通知正文可以打开 RestEye；“开始休息”和“跳过休息”按钮必须在后台 isolate 中通过共享 Drift 数据库重新进入 inbox、dispatcher 和 reducer 管线，不得拉起界面。Windows 和 macOS 的通知操作使用同一套通知认领、确定性命令和持久化 revision 校验，不另建平台状态机。主 isolate 恢复时需要重新读取持久化快照，以接收后台动作已经提交的状态。
 
 ## 9. 本地化、主题与跨平台 UI
 
@@ -161,7 +167,7 @@ feature 的 `data/` 实现 domain repository，并使用 mapper 在 domain model
 
 边界层捕获具体异常并转换为 `AppFailure` 或 capability 状态；UI 只展示可本地化的 failure code，不展示堆栈或插件原始错误。启动遇到非法计时快照或数据库错误时显示不依赖数据库的失败页，保留原始数据库，禁止静默清空。配置类未知枚举按默认值安全回退，不把它们当作启动失败条件。
 
-计时、通知、屏幕事件和统计事件的订阅必须串行化，所有 subscription、Timer、StreamController、native observer 和 database 在 runtime dispose 时释放。应用启动恢复完成后必须通过 `TimerCommandDispatcher` 结束上次进程遗留的活动计时；runtime 释放前以及生命周期 `detached` 事件到达时也必须结束当前活动计时并持久化停止事件。最小化到托盘、后台、隐藏和锁屏不属于真正退出，不得因此结束计时。恢复流程可重复执行，不得重复计时转换、事件或通知。日志通过 `AppLogger`，不得记录完整通知 payload、用户路径、统计明细或其他可识别信息。
+计时、通知、屏幕事件和统计事件的订阅必须串行化，所有 subscription、Timer、StreamController、native observer 和 database 在 runtime dispose 时释放。应用启动恢复完成后必须通过 `TimerCommandDispatcher` 结束上次进程遗留的活动计时；受控退出必须等待 runtime 先结束当前活动计时并持久化停止事件，生命周期 `detached` 仍执行尽力收尾。最小化到托盘、后台、隐藏和锁屏不属于真正退出，不得因此结束计时。恢复流程可重复执行，不得重复计时转换、事件或通知。日志通过 `AppLogger`，不得记录完整通知 payload、用户路径、统计明细或其他可识别信息。
 
 ## 11. 必须遵守的硬性规则
 

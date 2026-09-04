@@ -15,7 +15,8 @@ import 'package:rest_eye/l10n/l10n.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
-final class LocalNotificationGateway implements NotificationGateway {
+final class LocalNotificationGateway
+    implements NotificationGateway, ActiveNotificationQueryCapability {
   LocalNotificationGateway(
     this._settingsRepository,
     this._clock, {
@@ -40,10 +41,13 @@ final class LocalNotificationGateway implements NotificationGateway {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   final _actions = StreamController<NotificationActionRequest>.broadcast();
+  final _claimedActionNotificationIds = <int>{};
   AppLocalizations? _cachedStrings;
   String? _cachedLocaleKey;
   AndroidScheduleMode? _cachedAndroidScheduleMode;
   NotificationActionRequest? _launchAction;
+  ActiveNotificationQueryReliability _activeNotificationQueryReliability =
+      ActiveNotificationQueryReliability.nonAuthoritative;
   var _disposed = false;
 
   @override
@@ -108,6 +112,8 @@ final class LocalNotificationGateway implements NotificationGateway {
       onDidReceiveBackgroundNotificationResponse:
           onDidReceiveBackgroundNotificationResponse,
     );
+    _activeNotificationQueryReliability =
+        _platformActiveNotificationQueryReliability();
     if (windowsIconPath != null) {
       await _windowsIdentityChannel.invokeMethod<void>('register', {
         'appUserModelId': _windowsAppUserModelId,
@@ -119,6 +125,8 @@ final class LocalNotificationGateway implements NotificationGateway {
     final response = launchDetails?.notificationResponse;
     if (launchDetails?.didNotificationLaunchApp == true && response != null) {
       _launchAction = _parseResponse(response);
+      final action = _launchAction;
+      if (action != null) claimActionNotification(action.notificationId);
     }
   }
 
@@ -211,22 +219,57 @@ final class LocalNotificationGateway implements NotificationGateway {
   }
 
   @override
+  ActiveNotificationQueryReliability get activeNotificationQueryReliability =>
+      _activeNotificationQueryReliability;
+
+  @override
   Future<Set<int>> activeNotificationIds() async {
-    final ids = <int>{};
+    final ids = <int>{..._claimedActionNotificationIds};
+    if (_platformActiveNotificationQueryReliability() ==
+        ActiveNotificationQueryReliability.nonAuthoritative) {
+      _activeNotificationQueryReliability =
+          ActiveNotificationQueryReliability.nonAuthoritative;
+      return ids;
+    }
     try {
       final active = await _plugin.getActiveNotifications();
       ids.addAll(active.map((item) => item.id).whereType<int>());
+      _activeNotificationQueryReliability =
+          ActiveNotificationQueryReliability.authoritative;
     } on UnimplementedError {
-      // Pending requests are sufficient on platforms without active queries.
+      _markActiveNotificationQueryNonAuthoritative();
     } on UnsupportedError {
-      // Pending requests are sufficient on platforms without active queries.
+      _markActiveNotificationQueryNonAuthoritative();
     } on PlatformException {
-      // Some platform implementations expose the API but report it as
-      // unsupported through the method channel.
+      _markActiveNotificationQueryNonAuthoritative();
     } on MissingPluginException {
-      // Pending requests are sufficient when no active-query handler exists.
+      _markActiveNotificationQueryNonAuthoritative();
     }
     return ids;
+  }
+
+  ActiveNotificationQueryReliability
+  _platformActiveNotificationQueryReliability() {
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.windows =>
+        MsixUtils.hasPackageIdentity()
+            ? ActiveNotificationQueryReliability.authoritative
+            : ActiveNotificationQueryReliability.nonAuthoritative,
+      TargetPlatform.android ||
+      TargetPlatform.iOS ||
+      TargetPlatform.macOS => ActiveNotificationQueryReliability.authoritative,
+      _ => ActiveNotificationQueryReliability.nonAuthoritative,
+    };
+  }
+
+  void _markActiveNotificationQueryNonAuthoritative() {
+    _activeNotificationQueryReliability =
+        ActiveNotificationQueryReliability.nonAuthoritative;
+  }
+
+  @override
+  void claimActionNotification(int notificationId) {
+    if (!_disposed) _claimedActionNotificationIds.add(notificationId);
   }
 
   @override
@@ -234,9 +277,11 @@ final class LocalNotificationGateway implements NotificationGateway {
     ScheduledNotification notification, {
     required AppSettings settings,
   }) async {
+    if (_claimedActionNotificationIds.contains(notification.id)) return;
     final strings = _stringsFor(settings);
     final copy = _copyFor(notification.kind, strings);
     final basePayload = jsonEncode({
+      'notificationId': notification.id,
       'cycleId': notification.cycleId,
       'expectedPhase': notification.expectedPhase.name,
       'expectedRevision': notification.expectedRevision,
@@ -247,11 +292,13 @@ final class LocalNotificationGateway implements NotificationGateway {
               _startRestAction,
               strings.notificationActionStartRest,
               showsUserInterface: false,
+              cancelNotification: false,
             ),
             AndroidNotificationAction(
               _skipRestAction,
               strings.notificationActionSkipRest,
               showsUserInterface: false,
+              cancelNotification: false,
             ),
           ]
         : notification.hasStartWorkAction
@@ -260,6 +307,7 @@ final class LocalNotificationGateway implements NotificationGateway {
               _startWorkAction,
               strings.actionStartWork,
               showsUserInterface: false,
+              cancelNotification: false,
             ),
           ]
         : const <AndroidNotificationAction>[];
@@ -323,6 +371,7 @@ final class LocalNotificationGateway implements NotificationGateway {
       // before showing the due notification immediately, otherwise Android
       // can deliver it twice.
       await _plugin.cancel(id: notification.id);
+      if (_claimedActionNotificationIds.contains(notification.id)) return;
       if (defaultTargetPlatform == TargetPlatform.windows) {
         await _windowsNotifications.showRawXml(
           id: notification.id,
@@ -472,8 +521,9 @@ final class LocalNotificationGateway implements NotificationGateway {
       .replaceAll("'", '&apos;');
 
   @override
-  Future<void> cancel(int notificationId) {
-    return _plugin.cancel(id: notificationId);
+  Future<void> cancel(int notificationId) async {
+    await _plugin.cancel(id: notificationId);
+    _claimedActionNotificationIds.remove(notificationId);
   }
 
   @override
@@ -486,7 +536,10 @@ final class LocalNotificationGateway implements NotificationGateway {
   void _handleResponse(NotificationResponse response) {
     if (_disposed) return;
     final action = _parseResponse(response);
-    if (action != null && !_actions.isClosed) _actions.add(action);
+    if (action != null && !_actions.isClosed) {
+      claimActionNotification(action.notificationId);
+      _actions.add(action);
+    }
   }
 
   NotificationActionRequest? _parseResponse(NotificationResponse response) {
@@ -499,6 +552,7 @@ final class LocalNotificationGateway implements NotificationGateway {
   ) {
     return jsonEncode({
       'action': action,
+      'notificationId': notification.id,
       'cycleId': notification.cycleId,
       'expectedPhase': notification.expectedPhase.name,
       'expectedRevision': notification.expectedRevision,
@@ -527,6 +581,7 @@ final class LocalNotificationGateway implements NotificationGateway {
     if (_disposed) return;
     _disposed = true;
     _launchAction = null;
+    _claimedActionNotificationIds.clear();
     await _actions.close();
   }
 }
@@ -554,9 +609,12 @@ NotificationActionRequest? parseLocalNotificationActionResponse(
     };
     if (type == null) return null;
     final now = clock.utcNow;
+    final notificationId =
+        response.id ?? (json['notificationId'] as num?)?.toInt();
+    if (notificationId == null) return null;
     return NotificationActionRequest(
-      commandId:
-          'notification-${json['cycleId']}-$typeCode-${now.microsecondsSinceEpoch}',
+      commandId: 'notification-${json['cycleId']}-$notificationId-$typeCode',
+      notificationId: notificationId,
       type: type,
       cycleId: json['cycleId']! as String,
       expectedPhase: TimerPhase.values.byName(json['expectedPhase']! as String),

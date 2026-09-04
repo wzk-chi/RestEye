@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:rest_eye/core/lifecycle/app_exit_gateway.dart';
 import 'package:rest_eye/core/logging/app_logger.dart';
 import 'package:rest_eye/features/statistics/application/screen_activity_recorder.dart';
 import 'package:rest_eye/features/timer/application/notification_action_coordinator.dart';
@@ -20,6 +21,7 @@ final class AppRuntime {
     required this.timerRuntime,
     required this.screenActivityRecorder,
     required this.screenLockPauseController,
+    required this.appExitGateway,
     required this.logger,
   });
 
@@ -31,9 +33,11 @@ final class AppRuntime {
   final TimerRuntime timerRuntime;
   final ScreenActivityRecorder screenActivityRecorder;
   final ScreenLockPauseController screenLockPauseController;
+  final AppExitGateway appExitGateway;
   final AppLogger logger;
   var _initialized = false;
   var _disposed = false;
+  Future<void>? _disposeFuture;
 
   Future<void> initialize() async {
     if (_initialized || _disposed) return;
@@ -49,6 +53,7 @@ final class AppRuntime {
       timerRuntime.start();
       await screenActivityRecorder.start();
       await screenLockPauseController.start();
+      appExitGateway.start(onExitRequested: dispose);
       _initialized = true;
     } catch (_) {
       await dispose();
@@ -56,7 +61,9 @@ final class AppRuntime {
     }
   }
 
-  Future<void> dispose() async {
+  Future<void> dispose() => _disposeFuture ??= _dispose();
+
+  Future<void> _dispose() async {
     if (_disposed) return;
     _disposed = true;
     await _disposeStep(
@@ -80,6 +87,7 @@ final class AppRuntime {
     );
     await _disposeStep('notification gateway', notificationGateway.dispose);
     await _disposeStep('database', database.close);
+    await _disposeStep('app exit gateway', appExitGateway.dispose);
   }
 
   Future<void> _disposeStep(

@@ -12,6 +12,14 @@ enum NotificationPermissionStatus {
   unavailable,
 }
 
+/// Whether an empty active-notification query proves that nothing is shown.
+enum ActiveNotificationQueryReliability { authoritative, nonAuthoritative }
+
+/// Optional capability for gateways whose active query has platform limits.
+abstract interface class ActiveNotificationQueryCapability {
+  ActiveNotificationQueryReliability get activeNotificationQueryReliability;
+}
+
 final class ScheduledNotification {
   const ScheduledNotification({
     required this.id,
@@ -39,6 +47,7 @@ final class ScheduledNotification {
 final class NotificationActionRequest {
   const NotificationActionRequest({
     required this.commandId,
+    required this.notificationId,
     required this.type,
     required this.cycleId,
     required this.expectedPhase,
@@ -47,6 +56,7 @@ final class NotificationActionRequest {
   });
 
   final String commandId;
+  final int notificationId;
   final NotificationActionType type;
   final String cycleId;
   final TimerPhase expectedPhase;
@@ -66,6 +76,8 @@ abstract interface class NotificationGateway {
   Future<Set<int>> pendingNotificationIds();
 
   Future<Set<int>> activeNotificationIds();
+
+  void claimActionNotification(int notificationId);
 
   Future<void> schedule(
     ScheduledNotification notification, {

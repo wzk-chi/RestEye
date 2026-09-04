@@ -43,6 +43,9 @@ final class NotificationActionCoordinator {
   }
 
   Future<void> handleAction(NotificationActionRequest action) async {
+    // Keep reconciliation from treating an action notification as missing
+    // while the platform callback is still committing its timer command.
+    _gateway.claimActionNotification(action.notificationId);
     final operation = _tail.then((_) => _dispatch(action));
     _tail = operation.then<void>((_) {}, onError: (_, _) {});
     await operation;

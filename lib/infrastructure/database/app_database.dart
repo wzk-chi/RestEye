@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:rest_eye/core/build/app_build.dart';
 import 'package:rest_eye/infrastructure/database/tables/activity_events_table.dart';
 import 'package:rest_eye/infrastructure/database/tables/app_settings_table.dart';
 import 'package:rest_eye/infrastructure/database/tables/pending_commands_table.dart';
@@ -23,7 +24,7 @@ final class AppDatabase extends _$AppDatabase {
   AppDatabase.open()
     : super(
         driftDatabase(
-          name: 'rest_eye',
+          name: AppBuild.databaseName,
           native: const DriftNativeOptions(shareAcrossIsolates: true),
         ),
       );

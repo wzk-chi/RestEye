@@ -11,6 +11,7 @@ import 'package:rest_eye/features/timer/domain/timer_event.dart';
 import 'package:rest_eye/features/timer/domain/timer_phase.dart';
 import 'package:rest_eye/features/timer/domain/timer_policy.dart';
 import 'package:rest_eye/features/timer/domain/timer_reducer.dart';
+import 'package:rest_eye/features/timer/domain/timer_repository.dart';
 import 'package:rest_eye/features/timer/domain/timer_snapshot.dart';
 import 'package:rest_eye/platform/notifications/local_notification_gateway.dart';
 
@@ -166,6 +167,7 @@ void main() {
       final reconciler = NotificationScheduleReconciler(
         _FakeNotificationGateway(),
         _FakeSettingsRepository(),
+        _FakeTimerRepository(),
         const ConsoleAppLogger(),
         _FakeClock(restStartedAt),
       );
@@ -215,6 +217,7 @@ void main() {
       final reconciler = NotificationScheduleReconciler(
         _FakeNotificationGateway(),
         _FakeSettingsRepository(),
+        _FakeTimerRepository(),
         const ConsoleAppLogger(),
         _FakeClock(restStartedAt),
       );
@@ -256,7 +259,8 @@ void main() {
               NotificationResponseType.selectedNotificationAction,
           actionId: 'startWork',
           payload:
-              '{"cycleId":"cycle","expectedPhase":"awaitingWork",'
+              '{"notificationId":42,"cycleId":"cycle",'
+              '"expectedPhase":"awaitingWork",'
               '"expectedRevision":2}',
         ),
         _FakeClock(restStartedAt),
@@ -329,6 +333,9 @@ final class _FakeNotificationGateway implements NotificationGateway {
   Future<void> cancel(int notificationId) async {}
 
   @override
+  void claimActionNotification(int notificationId) {}
+
+  @override
   Future<void> dispose() async {}
 
   @override
@@ -353,4 +360,30 @@ final class _FakeNotificationGateway implements NotificationGateway {
 
   @override
   Future<NotificationActionRequest?> takeLaunchAction() async => null;
+}
+
+final class _FakeTimerRepository implements TimerRepository {
+  @override
+  Future<void> commit({
+    required int expectedRevision,
+    required TimerSnapshot snapshot,
+    required List<TimerEvent> events,
+    String? processedCommandId,
+    DateTime? processedAtUtc,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> enqueueCommand(TimerCommand command) =>
+      throw UnimplementedError();
+
+  @override
+  Future<TimerSnapshot> loadSnapshot() async => TimerSnapshot.idle();
+
+  @override
+  Future<List<TimerCommand>> loadPendingCommands() =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> markCommandStale(String commandId, DateTime atUtc) =>
+      throw UnimplementedError();
 }

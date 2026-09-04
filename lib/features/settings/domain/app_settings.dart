@@ -1,3 +1,4 @@
+import 'package:rest_eye/core/build/app_build.dart';
 import 'package:rest_eye/core/error/app_failure.dart';
 import 'package:rest_eye/features/timer/domain/timer_policy.dart';
 
@@ -29,8 +30,8 @@ final class AppSettings {
   });
 
   static const defaults = AppSettings(
-    workDuration: Duration(minutes: 20),
-    restDuration: Duration(seconds: 20),
+    workDuration: AppBuild.defaultWorkDuration,
+    restDuration: AppBuild.defaultRestDuration,
     reminderInterval: Duration(minutes: 3),
     reminderTimeout: Duration(minutes: 10),
     missedWorkReminderInterval: Duration(minutes: 3),
@@ -44,9 +45,9 @@ final class AppSettings {
     themePreference: AppThemePreference.system,
   );
 
-  static const minWorkDuration = Duration(minutes: 1);
+  static const minWorkDuration = AppBuild.minWorkDuration;
   static const maxWorkDuration = Duration(minutes: 180);
-  static const minRestDuration = Duration(seconds: 10);
+  static const minRestDuration = AppBuild.minRestDuration;
   static const maxRestDuration = Duration(seconds: 600);
   static const minReminderInterval = Duration(minutes: 1);
   static const maxReminderInterval = Duration(minutes: 30);

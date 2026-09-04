@@ -1,3 +1,5 @@
+import 'package:rest_eye/core/build/app_build.dart';
+
 enum TimeoutBehavior { nextCycle, stopTimer }
 
 enum RestCompletionBehavior { startWork, stopTimer, continueRest }
@@ -16,8 +18,8 @@ final class TimerCycleConfig {
   });
 
   static const defaults = TimerCycleConfig(
-    workDuration: Duration(minutes: 20),
-    restDuration: Duration(seconds: 20),
+    workDuration: AppBuild.defaultWorkDuration,
+    restDuration: AppBuild.defaultRestDuration,
     reminderInterval: Duration(minutes: 3),
     reminderTimeout: Duration(minutes: 10),
     missedWorkReminderInterval: Duration(minutes: 3),

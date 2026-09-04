@@ -118,6 +118,7 @@ final class _Fixture {
     final notificationReconciler = NotificationScheduleReconciler(
       notificationGateway,
       settings,
+      timerRepository,
       const ConsoleAppLogger(),
       clock,
     );
@@ -215,9 +216,6 @@ final class _FakeTimerRepository implements TimerRepository {
   Future<void> enqueueCommand(TimerCommand command) async {}
 
   @override
-  Future<DateTime?> loadLastHeartbeat() async => null;
-
-  @override
   Future<List<TimerCommand>> loadPendingCommands() async => const [];
 
   @override
@@ -225,9 +223,6 @@ final class _FakeTimerRepository implements TimerRepository {
 
   @override
   Future<void> markCommandStale(String commandId, DateTime atUtc) async {}
-
-  @override
-  Future<void> recordHeartbeat(DateTime atUtc) async {}
 }
 
 final class _FakeNotificationGateway implements NotificationGateway {
@@ -244,6 +239,9 @@ final class _FakeNotificationGateway implements NotificationGateway {
 
   @override
   Future<void> cancel(int notificationId) async {}
+
+  @override
+  void claimActionNotification(int notificationId) {}
 
   @override
   Future<void> dispose() async => _disposed = true;

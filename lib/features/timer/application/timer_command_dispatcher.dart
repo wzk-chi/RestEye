@@ -127,15 +127,7 @@ final class TimerCommandDispatcher {
   Future<void> stopAbandonedTimer({required String source}) async {
     final durable = await refreshFromRepository();
     if (!durable.isActive) return;
-    final heartbeat = await _repository.loadLastHeartbeat();
-    await stopIfActive(
-      source: source,
-      occurredAtUtc: heartbeat ?? durable.startedAtUtc,
-    );
-  }
-
-  Future<void> recordHeartbeat() {
-    return _repository.recordHeartbeat(_clock.utcNow);
+    await stopIfActive(source: source, occurredAtUtc: durable.startedAtUtc);
   }
 
   Future<TimerTransition> _execute(

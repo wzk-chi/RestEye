@@ -38,6 +38,7 @@ Future<void> _handleBackgroundNotificationAction(
   final notificationReconciler = NotificationScheduleReconciler(
     notificationGateway,
     settingsRepository,
+    timerRepository,
     logger,
     clock,
   );

@@ -23,6 +23,7 @@ import 'package:rest_eye/features/timer/application/screen_lock_pause_controller
 import 'package:rest_eye/features/timer/data/drift_timer_repository.dart';
 import 'package:rest_eye/infrastructure/database/app_database.dart';
 import 'package:rest_eye/platform/lifecycle/flutter_lifecycle_gateway.dart';
+import 'package:rest_eye/platform/lifecycle/flutter_app_exit_gateway.dart';
 import 'package:rest_eye/platform/notifications/local_notification_gateway.dart';
 import 'package:rest_eye/platform/orientation/flutter_orientation_gateway.dart';
 import 'package:rest_eye/platform/platform_capabilities_impl.dart';
@@ -58,6 +59,7 @@ Future<void> bootstrap() async {
     final notificationReconciler = NotificationScheduleReconciler(
       notificationGateway,
       settingsRepository,
+      timerRepository,
       logger,
       clock,
     );
@@ -75,6 +77,7 @@ Future<void> bootstrap() async {
       FlutterLifecycleGateway(),
       logger,
     );
+    final appExitGateway = FlutterAppExitGateway();
     final screenStateGateway = MethodChannelScreenStateGateway(clock);
     final screenActivityRecorder = ScreenActivityRecorder(
       screenStateGateway,
@@ -114,6 +117,7 @@ Future<void> bootstrap() async {
       timerRuntime: timerRuntime,
       screenActivityRecorder: screenActivityRecorder,
       screenLockPauseController: screenLockPauseController,
+      appExitGateway: appExitGateway,
       logger: logger,
     );
     await runtime.initialize();

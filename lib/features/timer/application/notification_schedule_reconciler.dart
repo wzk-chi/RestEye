@@ -7,6 +7,7 @@ import 'package:rest_eye/features/timer/application/ports/notification_gateway.d
 import 'package:rest_eye/features/timer/application/ports/platform_capabilities.dart';
 import 'package:rest_eye/features/timer/domain/timer_phase.dart';
 import 'package:rest_eye/features/timer/domain/timer_policy.dart';
+import 'package:rest_eye/features/timer/domain/timer_repository.dart';
 import 'package:rest_eye/features/timer/domain/timer_snapshot.dart';
 
 final class NotificationPlan {
@@ -20,15 +21,18 @@ final class NotificationScheduleReconciler {
   NotificationScheduleReconciler(
     this._gateway,
     this._settingsRepository,
+    this._timerRepository,
     this._logger,
     this._clock,
   );
 
   final NotificationGateway _gateway;
   final SettingsRepository _settingsRepository;
+  final TimerRepository _timerRepository;
   final AppLogger _logger;
   final AppClock _clock;
   final _availability = StreamController<CapabilityAvailability>.broadcast();
+  final _deliveryFencedIds = <int>{};
   Future<void> _tail = Future.value();
   var _generation = 0;
   var _disposed = false;
@@ -74,8 +78,20 @@ final class NotificationScheduleReconciler {
     try {
       final settings = await _settingsRepository.load();
       if (generation != _generation) return;
+      final pendingIds = await _gateway.pendingNotificationIds();
+      final activeIds = await _gateway.activeNotificationIds();
+      final activeQueryIsAuthoritative =
+          _gateway is ActiveNotificationQueryCapability &&
+          (_gateway as ActiveNotificationQueryCapability)
+                  .activeNotificationQueryReliability ==
+              ActiveNotificationQueryReliability.authoritative;
+      _deliveryFencedIds.addAll(pendingIds);
+      _deliveryFencedIds.addAll(activeIds);
+      final durableSnapshot = await _timerRepository.loadSnapshot();
+      if (generation != _generation) return;
+      final requestedSnapshotIsCurrent = _sameState(snapshot, durableSnapshot);
       final plan = derivePlan(
-        snapshot,
+        durableSnapshot,
         vibrationEnabled: settings.androidVibrationEnabled,
         workReminderEnabled: settings.workReminderEnabled,
         restReminderEnabled: settings.restReminderEnabled,
@@ -85,11 +101,9 @@ final class NotificationScheduleReconciler {
       );
       final desired = plan.items;
       final desiredById = {for (final item in desired) item.id: item};
-      final pendingIds = await _gateway.pendingNotificationIds();
-      final activeIds = await _gateway.activeNotificationIds();
       final existingIds = {...pendingIds, ...activeIds};
       final duePrevious = _dueNotifications(
-        previousSnapshot,
+        requestedSnapshotIsCurrent ? previousSnapshot : null,
         vibrationEnabled: settings.androidVibrationEnabled,
         workReminderEnabled: settings.workReminderEnabled,
         restReminderEnabled: settings.restReminderEnabled,
@@ -103,29 +117,41 @@ final class NotificationScheduleReconciler {
       for (final id in obsoleteIds) {
         if (generation != _generation) return;
         await _gateway.cancel(id);
+        _deliveryFencedIds.remove(id);
       }
       for (final notification in duePrevious) {
         if (generation != _generation) return;
-        // Leave a pending alarm alone. Cancelling and immediately replacing it
-        // here races Android's ScheduledNotificationReceiver at the deadline.
-        // Only recover when neither the alarm nor an already-posted notice is
-        // present anymore.
-        if (!pendingIds.contains(notification.id) &&
-            !activeIds.contains(notification.id)) {
+        if (_shouldScheduleMissing(
+          notification,
+          pendingIds: pendingIds,
+          activeIds: activeIds,
+          activeQueryIsAuthoritative: activeQueryIsAuthoritative,
+        )) {
           await _gateway.schedule(notification, settings: settings);
+          _deliveryFencedIds.add(notification.id);
         }
       }
       for (final notification in desiredById.values) {
         if (generation != _generation) return;
         final isPending = pendingIds.contains(notification.id);
-        final isNew = !existingIds.contains(notification.id);
-        final isDuePending =
-            isPending && !notification.scheduledAtUtc.isAfter(_clock.utcNow);
-        if (forceReschedule || isNew || isDuePending) {
+        final isFuture = notification.scheduledAtUtc.isAfter(_clock.utcNow);
+        // Rewriting a due pending or active notification can race native
+        // delivery and replay its alert. Forced rewrites only apply to future
+        // pending requests. Missing due notifications are only recovered when
+        // the platform can authoritatively confirm that they are not active.
+        if (_shouldScheduleMissing(
+              notification,
+              pendingIds: pendingIds,
+              activeIds: activeIds,
+              activeQueryIsAuthoritative: activeQueryIsAuthoritative,
+            ) ||
+            (forceReschedule && isPending && isFuture)) {
           await _gateway.schedule(notification, settings: settings);
+          _deliveryFencedIds.add(notification.id);
         }
       }
       if (generation != _generation) return;
+      _deliveryFencedIds.retainAll({...desiredById.keys, ...duePreviousIds});
       _publishAvailability(
         plan.truncated
             ? CapabilityAvailability.degraded
@@ -135,6 +161,36 @@ final class NotificationScheduleReconciler {
       _logger.warning('Notification reconciliation failed', error: error);
       _publishAvailability(CapabilityAvailability.degraded);
     }
+  }
+
+  bool _sameState(TimerSnapshot first, TimerSnapshot second) {
+    return first.revision == second.revision &&
+        first.cycleId == second.cycleId &&
+        first.phase == second.phase &&
+        first.executionStatus == second.executionStatus;
+  }
+
+  bool _shouldScheduleMissing(
+    ScheduledNotification notification, {
+    required Set<int> pendingIds,
+    required Set<int> activeIds,
+    required bool activeQueryIsAuthoritative,
+  }) {
+    if (pendingIds.contains(notification.id) ||
+        activeIds.contains(notification.id)) {
+      return false;
+    }
+    if (notification.scheduledAtUtc.isAfter(_clock.utcNow)) return true;
+
+    // Once a platform has accepted or reported a deterministic notification
+    // ID, crossing its deadline consumes that delivery slot. This closes the
+    // pending-to-active hand-off race without persisting a heartbeat or ledger.
+    if (_deliveryFencedIds.contains(notification.id)) return false;
+
+    // An empty active list is proof of absence only on platforms that expose
+    // an authoritative query. Unpackaged Windows apps return an empty list for
+    // every query, including while their toast is visibly on screen.
+    return activeQueryIsAuthoritative;
   }
 
   void _publishAvailability(CapabilityAvailability availability) {
@@ -317,6 +373,7 @@ final class NotificationScheduleReconciler {
     _disposed = true;
     _generation++;
     await _tail;
+    _deliveryFencedIds.clear();
     await _availability.close();
   }
 }

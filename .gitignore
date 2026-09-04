@@ -74,12 +74,15 @@ desktop.ini
 *.p12
 key.properties
 
-# Keep the public README, architecture, and requirements under version control;
-# keep internal agent guidance and other working documents local.
+# Keep the public README and maintained project documentation under version
+# control; keep internal agent guidance and other working documents local.
 /AGENTS.md
 /docs/*
 !/docs/architecture.md
+!/docs/development.md
 !/docs/requirements.md
+!/docs/adr/
+!/docs/adr/*.md
 
 # macOS system metadata and Finder files
 .AppleDouble

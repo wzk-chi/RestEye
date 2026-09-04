@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rest_eye/app/theme/rest_eye_spacing.dart';
+import 'package:rest_eye/core/build/app_build.dart';
 import 'package:rest_eye/core/error/app_failure.dart';
 import 'package:rest_eye/features/about/presentation/about_page.dart';
 import 'package:rest_eye/features/settings/application/settings_controller.dart';
@@ -42,6 +43,7 @@ class _SettingsContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final strings = AppLocalizations.of(context);
     final controller = ref.read(settingsControllerProvider.notifier);
+    final isDebugBuild = AppBuild.isDebugBuild;
     final isMacOS = defaultTargetPlatform == TargetPlatform.macOS;
     final isDesktop =
         isMacOS || defaultTargetPlatform == TargetPlatform.windows;
@@ -198,29 +200,43 @@ class _SettingsContent extends ConsumerWidget {
               children: [
                 _DurationSlider(
                   title: strings.settingsWorkDuration,
-                  value: state.draft.workDuration.inMinutes.toDouble(),
-                  min: 1,
-                  max: 180,
-                  divisions: 179,
-                  valueLabel: strings.settingsMinutesValue(
-                    state.draft.workDuration.inMinutes,
-                  ),
+                  value: isDebugBuild
+                      ? state.draft.workDuration.inSeconds.toDouble()
+                      : state.draft.workDuration.inMinutes.toDouble(),
+                  min: isDebugBuild ? 5 : 1,
+                  max: isDebugBuild
+                      ? AppBuild.debugDurationSliderMax.inSeconds.toDouble()
+                      : 180,
+                  divisions: isDebugBuild ? 55 : 179,
+                  valueLabel: isDebugBuild
+                      ? strings.settingsSecondsValue(
+                          state.draft.workDuration.inSeconds,
+                        )
+                      : strings.settingsMinutesValue(
+                          state.draft.workDuration.inMinutes,
+                        ),
                   onChanged: (value) => controller.setWorkDuration(
-                    Duration(minutes: value.round()),
+                    isDebugBuild
+                        ? Duration(seconds: value.round())
+                        : Duration(minutes: value.round()),
                   ),
                 ),
                 const Divider(height: 1),
                 _DurationSlider(
                   title: strings.settingsRestDuration,
                   value: state.draft.restDuration.inSeconds.toDouble(),
-                  min: 10,
-                  max: 600,
-                  divisions: 59,
+                  min: isDebugBuild ? 5 : 10,
+                  max: isDebugBuild
+                      ? AppBuild.debugDurationSliderMax.inSeconds.toDouble()
+                      : 600,
+                  divisions: isDebugBuild ? 55 : 59,
                   valueLabel: strings.settingsSecondsValue(
                     state.draft.restDuration.inSeconds,
                   ),
                   onChanged: (value) => controller.setRestDuration(
-                    Duration(seconds: (value / 10).round() * 10),
+                    isDebugBuild
+                        ? Duration(seconds: value.round())
+                        : Duration(seconds: (value / 10).round() * 10),
                   ),
                 ),
                 const Divider(height: 1),

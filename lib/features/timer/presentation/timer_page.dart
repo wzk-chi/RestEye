@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rest_eye/app/theme/rest_eye_spacing.dart';
+import 'package:rest_eye/core/build/app_build.dart';
 import 'package:rest_eye/features/settings/application/settings_controller.dart';
 import 'package:rest_eye/features/timer/application/ports/notification_gateway.dart';
 import 'package:rest_eye/features/timer/application/ports/platform_capabilities.dart';
@@ -410,15 +411,19 @@ class _QuickDurationDialogState extends State<_QuickDurationDialog> {
   @override
   void initState() {
     super.initState();
+    final isDebugBuild = AppBuild.isDebugBuild;
     _value = _isWork
-        ? widget.initialValue.inMinutes
+        ? isDebugBuild
+              ? widget.initialValue.inSeconds
+              : widget.initialValue.inMinutes
         : widget.initialValue.inSeconds;
   }
 
   @override
   Widget build(BuildContext context) {
     final strings = AppLocalizations.of(context);
-    final valueLabel = _isWork
+    final isDebugBuild = AppBuild.isDebugBuild;
+    final valueLabel = _isWork && !isDebugBuild
         ? strings.settingsMinutesValue(_value)
         : strings.settingsSecondsValue(_value);
     return AlertDialog(
@@ -446,13 +451,19 @@ class _QuickDurationDialogState extends State<_QuickDurationDialog> {
           ),
           Slider(
             value: _value.toDouble(),
-            min: _isWork ? 1 : 10,
-            max: _isWork ? 180 : 600,
-            divisions: _isWork ? 179 : 59,
+            min: isDebugBuild ? 5 : (_isWork ? 1 : 10),
+            max: isDebugBuild
+                ? AppBuild.debugDurationSliderMax.inSeconds.toDouble()
+                : (_isWork ? 180 : 600),
+            divisions: isDebugBuild ? 55 : (_isWork ? 179 : 59),
             label: valueLabel,
             onChanged: (value) {
               setState(() {
-                _value = _isWork ? value.round() : (value / 10).round() * 10;
+                _value = isDebugBuild
+                    ? value.round()
+                    : _isWork
+                    ? value.round()
+                    : (value / 10).round() * 10;
               });
             },
           ),
@@ -465,7 +476,9 @@ class _QuickDurationDialogState extends State<_QuickDurationDialog> {
         ),
         FilledButton(
           onPressed: () {
-            final duration = _isWork
+            final duration = isDebugBuild
+                ? Duration(seconds: _value)
+                : _isWork
                 ? Duration(minutes: _value)
                 : Duration(seconds: _value);
             Navigator.of(context).pop(duration);
