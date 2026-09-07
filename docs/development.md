@@ -86,6 +86,30 @@ artifacts/RestEye-<version>-windows-x64-setup.exe
 
 发布前应记录安装程序的 SHA-256。构建或打包过程不得自动启动 RestEye，Windows 运行验收由维护者单独执行。
 
+## macOS DMG 正式发布
+
+macOS 直接下载发布使用系统 `hdiutil` 创建 DMG，标准入口为：
+
+```bash
+./tool/build_resteye_macos.sh
+```
+
+输出文件为：
+
+```text
+artifacts/RestEye-<version>-macos.dmg
+```
+
+不配置 Apple Developer 凭据时，脚本生成未完成 Developer ID 签名和公证的本地验收包，不适合公开发布。正式发布时，先在本机钥匙串中保存 notarytool profile，再通过环境变量提供签名身份和 profile：
+
+```bash
+MACOS_SIGNING_IDENTITY="Developer ID Application: <Developer Name> (<Team ID>)" \
+MACOS_NOTARY_PROFILE="resteye-notary" \
+./tool/build_resteye_macos.sh
+```
+
+脚本会对 `RestEye.app` 使用 hardened runtime 签名，提交 DMG 进行 Apple 公证，staple 公证票据并输出 SHA-256。签名身份、钥匙串 profile 和凭据只能保存在本机，不得提交到 Git；打包过程不会启动 RestEye。
+
 ## macOS 验证
 
 在 macOS 主机执行：
@@ -103,6 +127,6 @@ flutter build macos
 - 格式检查和 `flutter analyze` 通过。
 - 对应目标平台构建成功。
 - 版本号和产物文件名一致。
-- Android APK 或 Windows 安装程序的 SHA-256 已记录。
+- Android APK、Windows 安装程序或 macOS DMG 的 SHA-256 已记录。
 - 签名密钥、`key.properties` 和本机路径没有进入版本控制。
 - 通知、计时、退出、托盘或菜单栏等受影响功能已在目标平台完成手动验收。

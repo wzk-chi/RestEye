@@ -225,6 +225,12 @@ GitHub Windows 发布使用 Inno Setup 生成 x64 安装程序，标准入口为
 
 脚本从 `pubspec.yaml` 读取版本，执行 `flutter build windows --release`，将完整的 `build/windows/x64/runner/Release/` 目录（包括 `rest_eye.exe`、Flutter 引擎 DLL、插件 DLL 和 `data/`）打包为 `artifacts/RestEye-<version>-windows-x64-setup.exe`。安装默认使用当前用户目录，不要求管理员权限；卸载不删除 RestEye 用户数据。发布前应保留安装程序 SHA-256。安装器配置位于 `tool/RestEye.iss`，不应只分发单独的可执行文件。
 
+### 12.3 macOS DMG 发布
+
+macOS 直接下载发布使用 `tool/build_resteye_macos.sh`。脚本从 `pubspec.yaml` 读取版本，执行 `flutter build macos --release`，将 `rest_eye.app` 暂存为用户可见的 `RestEye.app`，加入 `/Applications` 快捷方式，再使用系统 `hdiutil` 生成 `artifacts/RestEye-<version>-macos.dmg`。构建过程不得启动 RestEye，并在结束时输出 DMG 的 SHA-256。
+
+配置 `MACOS_SIGNING_IDENTITY` 时，脚本使用 Developer ID Application 和 hardened runtime 对应用签名并验证；再配置 `MACOS_NOTARY_PROFILE` 时，脚本通过 `xcrun notarytool` 提交 DMG、等待公证、staple 票据并验证。公证 profile 必须配合签名身份使用；没有签名配置的 DMG 只能用于本地验收，不得作为公开发布产物。签名身份和公证凭据只能保存在本机钥匙串或环境变量中，禁止进入版本控制。
+
 ## 13. 演进方式
 
 新功能优先放入对应 feature；只有两个以上 feature 稳定复用的非业务能力才能进入 `core/`。新增平台能力先定义 application port，再实现 Android、Windows、macOS adapter；不要让平台差异污染 domain。改变依赖方向、持久化格式、状态机语义或共享通道时，先更新本文档并记录 ADR，再编码。桌面托盘/菜单栏协议必须保持 action id、文案字段和事件通道在 Windows/macOS 一致，新增计时动作先扩展共享 port 与 Dart 映射，再改原生菜单。保持 `main.dart` 极小、文件职责单一、命名清晰，并在交付前说明变更文件、验证命令、未验证平台和已知限制。
