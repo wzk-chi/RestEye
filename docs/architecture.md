@@ -160,7 +160,7 @@ Android 定时提醒使用普通通知样式：不设置 `timeoutAfter`，不因
 
 设置页的卡片顺序固定为“外观 → 通知 → 计时 → 关于”：不显示分类标题或分类图标，设置项不使用装饰性左侧图标，所有卡片保持统一的内容起始线和控件对齐；工作提醒、休息提醒、未休息/未工作重复提醒及各自间隔位于通知卡片，四类开关在 Android、Windows、macOS 均显示；锁屏暂停位于计时卡片且默认关闭，关于只作为最后的二级入口；未休息与休息超时时间及各自超时后处理也属于计时卡片。Android 外观设置提供默认开启的固定竖屏开关，Windows 外观设置提供默认开启的“关闭时最小化到托盘”开关。统计页默认选择今天，并通过 Material 单日期选择器切换日期；摘要与时间轴拆为两张卡片：摘要使用工作、休息和完成休息三个 Material 语义图标，不使用左侧竖杠；单日时间轴卡片只保留图例和可视化，不添加标题。不将亮屏时长作为独立用户指标。工作使用蓝色、休息使用高对比度暖橙色，浅色和深色主题都必须可区分。使用 Material 组件组合（如 `Row`、`Stack`、`Card`），不得使用 `CustomPainter` 或手动画布。
 
-所有用户可见文字、错误、无障碍语义、通知标题/正文、通知动作和原生显示名称都必须本地化。ARB 源文件位于 `lib/l10n/arb/`，`app_zh.arb` 提供中文，`app_en.arb` 提供英文回退；生成文件位于 `lib/l10n/generated/`，禁止手动编辑。语言偏好使用稳定枚举 `system`、`zh`、`en`，默认 `system`；跟随系统时 UI 保持 `MaterialApp.locale == null` 以响应系统语言变化，通知在调度时把当前系统 locale 解析为受支持语言。domain/database 只保存 locale code、枚举和数值，不保存翻译后的句子；切换语言后应重排尚未触发的通知。
+所有用户可见文字、错误、无障碍语义、通知标题/正文、通知动作和原生显示名称都必须本地化。ARB 源文件位于 `lib/l10n/arb/`，`app_zh.arb` 提供中文，`app_en.arb` 提供英文回退；生成文件位于 `lib/l10n/generated/`，禁止手动编辑。macOS Bundle 的 `CFBundleName` 和 `CFBundleDisplayName` 通过 `macos/Runner/*/InfoPlist.strings` 本地化：英文系统显示 `rest eye`，中文系统显示 `眸息`；`rest_eye` 仅作为技术包名和可执行文件名。语言偏好使用稳定枚举 `system`、`zh`、`en`，默认 `system`；跟随系统时 UI 保持 `MaterialApp.locale == null` 以响应系统语言变化，通知在调度时把当前系统 locale 解析为受支持语言。domain/database 只保存 locale code、枚举和数值，不保存翻译后的句子；切换语言后应重排尚未触发的通知。
 
 三端统一使用 Material 3。主题偏好使用稳定枚举 `system`、`light`、`dark`，默认 `system`，分别映射到 Flutter 的 `ThemeMode`。品牌种子色为 `#6B9FE8`，主题 token、间距和圆角集中在 `app/theme/`。一级导航固定为“今日 → 统计 → 设置”，关于页从设置进入二级页面；首页不显示左上角品牌图标和应用名称。首页工作/休息摘要是至少 44×44 的可操作入口，打开快捷时长弹窗；修改值从下一轮生效，正在计时时保存会先经确认弹框并停止活动轮（见 5.4）。compact `< 600` 使用 `NavigationBar`，更宽布局优先 `NavigationRail`。必须支持深浅色、文本缩放、键盘焦点、鼠标悬停、语义标签和至少 44×44 的交互目标。
 
