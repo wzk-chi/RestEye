@@ -229,6 +229,9 @@ final class MainFlutterWindow: NSWindow, NSWindowDelegate, FlutterStreamHandler 
   }
 
   @objc private func showFromTray(_ sender: Any?) {
+    if isMiniaturized {
+      deminiaturize(nil)
+    }
     makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
   }
