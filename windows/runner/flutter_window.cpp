@@ -20,6 +20,10 @@
 
 namespace {
 
+constexpr const wchar_t kWindowStateRegistryPath[] =
+    L"Software\\RestEye";
+constexpr const wchar_t kWindowNormalRectValue[] = L"WindowNormalRect";
+
 std::optional<std::wstring> Utf8ToWide(const std::string& value) {
   if (value.empty()) return std::wstring();
   const auto source_length = static_cast<int>(value.size());
@@ -65,6 +69,44 @@ LSTATUS WriteRegistryString(HKEY key,
       key, value_name, 0, REG_SZ,
       reinterpret_cast<const BYTE*>(value.c_str()),
       static_cast<DWORD>((value.size() + 1) * sizeof(wchar_t)));
+}
+
+std::optional<RECT> ReadWindowNormalRect() {
+  HKEY key = nullptr;
+  if (RegOpenKeyExW(HKEY_CURRENT_USER, kWindowStateRegistryPath, 0,
+                    KEY_QUERY_VALUE, &key) != ERROR_SUCCESS) {
+    return std::nullopt;
+  }
+
+  RECT rect{};
+  DWORD type = 0;
+  DWORD size = sizeof(rect);
+  const auto status = RegQueryValueExW(
+      key, kWindowNormalRectValue, nullptr, &type,
+      reinterpret_cast<BYTE*>(&rect), &size);
+  RegCloseKey(key);
+  if (status != ERROR_SUCCESS || type != REG_BINARY || size != sizeof(rect) ||
+      rect.right <= rect.left || rect.bottom <= rect.top) {
+    return std::nullopt;
+  }
+  return rect;
+}
+
+void SaveWindowNormalRect(HWND window) {
+  WINDOWPLACEMENT placement{};
+  placement.length = sizeof(placement);
+  if (!GetWindowPlacement(window, &placement)) return;
+
+  HKEY key = nullptr;
+  if (RegCreateKeyExW(HKEY_CURRENT_USER, kWindowStateRegistryPath, 0, nullptr,
+                      0, KEY_SET_VALUE, nullptr, &key,
+                      nullptr) != ERROR_SUCCESS) {
+    return;
+  }
+  const RECT& rect = placement.rcNormalPosition;
+  RegSetValueExW(key, kWindowNormalRectValue, 0, REG_BINARY,
+                 reinterpret_cast<const BYTE*>(&rect), sizeof(rect));
+  RegCloseKey(key);
 }
 
 LSTATUS RegisterNotificationIdentity(const std::wstring& app_user_model_id,
@@ -129,6 +171,12 @@ FlutterWindow::~FlutterWindow() {}
 bool FlutterWindow::OnCreate() {
   if (!Win32Window::OnCreate()) {
     return false;
+  }
+
+  if (const auto rect = ReadWindowNormalRect()) {
+    SetWindowPos(GetHandle(), nullptr, rect->left, rect->top,
+                 rect->right - rect->left, rect->bottom - rect->top,
+                 SWP_NOZORDER | SWP_NOACTIVATE);
   }
 
   RECT frame = GetClientArea();
@@ -431,6 +479,7 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
               [continue_close]() { continue_close(); }));
       return 0;
     }
+    SaveWindowNormalRect(hwnd);
   }
 
   if (message == kTrayCallbackMessage) {

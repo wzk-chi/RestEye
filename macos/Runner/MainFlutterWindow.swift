@@ -2,6 +2,7 @@ import Cocoa
 import FlutterMacOS
 
 final class MainFlutterWindow: NSWindow, NSWindowDelegate, FlutterStreamHandler {
+  private static let windowFrameDefaultsKey = "RestEye.windowFrame"
   private static let windowBehaviorChannelName = "dev.resteye/window_behavior"
   private static let windowBehaviorEventsChannelName =
     "dev.resteye/window_behavior/events"
@@ -23,16 +24,26 @@ final class MainFlutterWindow: NSWindow, NSWindowDelegate, FlutterStreamHandler 
   private var trayLabelsReady = false
   private var minimizeToTrayOnClose = true
   private var closeRequested = false
+  private var terminationObserver: NSObjectProtocol?
+  private var lastNormalFrame: NSRect?
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
-    let windowFrame = self.frame
+    let windowFrame = Self.restoredWindowFrame ?? self.frame
+    lastNormalFrame = windowFrame
     self.contentViewController = flutterViewController
     self.setFrame(windowFrame, display: true)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
     super.awakeFromNib()
     delegate = self
+    terminationObserver = NotificationCenter.default.addObserver(
+      forName: NSApplication.willTerminateNotification,
+      object: NSApp,
+      queue: .main
+    ) { [weak self] _ in
+      self?.saveNormalWindowFrame()
+    }
 
     screenStateBridge = ScreenStateBridge(
       messenger: flutterViewController.engine.binaryMessenger
@@ -40,6 +51,39 @@ final class MainFlutterWindow: NSWindow, NSWindowDelegate, FlutterStreamHandler 
     configureWindowBehavior(
       messenger: flutterViewController.engine.binaryMessenger
     )
+  }
+
+  private static var restoredWindowFrame: NSRect? {
+    guard
+      let value = UserDefaults.standard.string(forKey: windowFrameDefaultsKey)
+    else {
+      return nil
+    }
+    let frame = NSRectFromString(value)
+    guard frame.width > 0, frame.height > 0 else { return nil }
+    return frame
+  }
+
+  private func updateLastNormalFrame() {
+    guard !isZoomed && !isMiniaturized else { return }
+    lastNormalFrame = frame
+  }
+
+  private func saveNormalWindowFrame() {
+    updateLastNormalFrame()
+    guard let frame = lastNormalFrame else { return }
+    UserDefaults.standard.set(
+      NSStringFromRect(frame),
+      forKey: Self.windowFrameDefaultsKey
+    )
+  }
+
+  func windowDidMove(_ notification: Notification) {
+    updateLastNormalFrame()
+  }
+
+  func windowDidResize(_ notification: Notification) {
+    updateLastNormalFrame()
   }
 
   private func configureWindowBehavior(messenger: FlutterBinaryMessenger) {
@@ -248,6 +292,9 @@ final class MainFlutterWindow: NSWindow, NSWindowDelegate, FlutterStreamHandler 
   }
 
   deinit {
+    if let observer = terminationObserver {
+      NotificationCenter.default.removeObserver(observer)
+    }
     removeTrayItem()
     windowBehaviorMethodChannel?.setMethodCallHandler(nil)
     windowBehaviorEventChannel?.setStreamHandler(nil)
