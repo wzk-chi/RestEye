@@ -74,9 +74,8 @@ desktop.ini
 *.p12
 key.properties
 
-# Keep the public README and maintained project documentation under version
-# control; keep internal agent guidance and other working documents local.
-/AGENTS.md
+# Keep the public README, maintained project documentation, and repository
+# guidance under version control; keep other working documents local.
 /docs/*
 !/docs/architecture.md
 !/docs/development.md
