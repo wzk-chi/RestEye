@@ -200,7 +200,16 @@ final class MainFlutterWindow: NSWindow, NSWindowDelegate, FlutterStreamHandler 
       orderOut(nil)
       return false
     }
+    if !closeRequested {
+      closeRequested = true
+      NSApp.terminate(nil)
+      return false
+    }
     return true
+  }
+
+  func allowCloseForTermination() {
+    closeRequested = true
   }
 
   private func updateTrayItem() {
