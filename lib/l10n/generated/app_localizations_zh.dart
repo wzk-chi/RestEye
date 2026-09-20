@@ -452,7 +452,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutPomodoroTitle => '番茄工作法';
 
   @override
-  String get aboutPomodoroBody => '把工作分成专注时段和休息时段，在保持专注的同时定期休息，逐步形成规律的工作—休息节奏。';
+  String get aboutPomodoroBody => '工作 25 分钟，休息 5 分钟，保持专注与节奏。';
 
   @override
   String get aboutPrivacyTitle => '本地与隐私';

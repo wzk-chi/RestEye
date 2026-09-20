@@ -929,7 +929,7 @@ abstract class AppLocalizations {
   /// No description provided for @aboutPomodoroBody.
   ///
   /// In zh, this message translates to:
-  /// **'把工作分成专注时段和休息时段，在保持专注的同时定期休息，逐步形成规律的工作—休息节奏。'**
+  /// **'工作 25 分钟，休息 5 分钟，保持专注与节奏。'**
   String get aboutPomodoroBody;
 
   /// No description provided for @aboutPrivacyTitle.

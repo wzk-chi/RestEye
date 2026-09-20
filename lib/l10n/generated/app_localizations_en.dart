@@ -484,7 +484,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutPomodoroBody =>
-      'Break work into focused sessions and rest periods. Regular breaks help you stay focused and build a sustainable work-and-rest rhythm.';
+      'Work for 25 minutes, then rest for 5 minutes to keep a steady rhythm.';
 
   @override
   String get aboutPrivacyTitle => 'Local and private';
