@@ -414,6 +414,35 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get aboutCheckForUpdates => '检查更新';
+
+  @override
+  String get aboutCheckForUpdatesChecking => '正在检查更新…';
+
+  @override
+  String get aboutAlreadyLatest => '已经是最新版本了。';
+
+  @override
+  String get aboutUpdateAvailableTitle => '发现新版本';
+
+  @override
+  String aboutUpdateAvailableMessage(String version) {
+    return '发现新版本 $version，是否前往 GitHub Release 页面下载？';
+  }
+
+  @override
+  String get aboutUpdateLater => '稍后';
+
+  @override
+  String get aboutUpdateOpenRelease => '前往 Release';
+
+  @override
+  String get aboutUpdateCheckFailed => '检查更新失败，请稍后重试。';
+
+  @override
+  String get aboutReleaseOpenFailed => '无法打开 GitHub Release 页面。';
+
+  @override
   String get aboutGuidanceTitle => '20-20-20 护眼法';
 
   @override

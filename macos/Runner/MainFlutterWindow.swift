@@ -281,7 +281,15 @@ final class MainFlutterWindow: NSWindow, NSWindowDelegate, FlutterStreamHandler 
     statusItem.menu = menu
   }
 
+  func showFromDock() {
+    showWindow()
+  }
+
   @objc private func showFromTray(_ sender: Any?) {
+    showWindow()
+  }
+
+  private func showWindow() {
     if isMiniaturized {
       deminiaturize(nil)
     }

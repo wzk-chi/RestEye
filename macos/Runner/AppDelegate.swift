@@ -7,6 +7,14 @@ class AppDelegate: FlutterAppDelegate {
     return false
   }
 
+  override func applicationShouldHandleReopen(
+    _ sender: NSApplication,
+    hasVisibleWindows flag: Bool
+  ) -> Bool {
+    (mainFlutterWindow as? MainFlutterWindow)?.showFromDock()
+    return true
+  }
+
   override func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
     (mainFlutterWindow as? MainFlutterWindow)?.allowCloseForTermination()
     return super.applicationShouldTerminate(sender)

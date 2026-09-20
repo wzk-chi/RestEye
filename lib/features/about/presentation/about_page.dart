@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:rest_eye/app/theme/rest_eye_spacing.dart';
+import 'package:rest_eye/features/about/application/about_update_checker.dart';
 import 'package:rest_eye/l10n/generated/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -11,11 +12,18 @@ final aboutPackageInfoProvider = FutureProvider<PackageInfo>(
   (ref) => PackageInfo.fromPlatform(),
 );
 
-class AboutPage extends ConsumerWidget {
+class AboutPage extends ConsumerStatefulWidget {
   const AboutPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AboutPage> createState() => _AboutPageState();
+}
+
+class _AboutPageState extends ConsumerState<AboutPage> {
+  var _checkingForUpdates = false;
+
+  @override
+  Widget build(BuildContext context) {
     final strings = AppLocalizations.of(context);
     final packageInfo = ref.watch(aboutPackageInfoProvider);
     final version = packageInfo.when(
@@ -59,6 +67,25 @@ class AboutPage extends ConsumerWidget {
                               ),
                               SizedBox(height: context.spacing.xs),
                               Text(strings.aboutVersion(version)),
+                              SizedBox(height: context.spacing.md),
+                              OutlinedButton.icon(
+                                onPressed: _checkingForUpdates
+                                    ? null
+                                    : _checkForUpdates,
+                                icon: _checkingForUpdates
+                                    ? const SizedBox.square(
+                                        dimension: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Icon(Icons.system_update_outlined),
+                                label: Text(
+                                  _checkingForUpdates
+                                      ? strings.aboutCheckForUpdatesChecking
+                                      : strings.aboutCheckForUpdates,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -97,6 +124,60 @@ class AboutPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _checkForUpdates() async {
+    setState(() => _checkingForUpdates = true);
+    final strings = AppLocalizations.of(context);
+    try {
+      final packageInfo = await ref.read(aboutPackageInfoProvider.future);
+      final release = await ref
+          .read(aboutUpdateCheckerProvider)
+          .checkForUpdates(currentVersion: packageInfo.version);
+      if (!mounted) return;
+
+      if (release == null) {
+        _showMessage(strings.aboutAlreadyLatest);
+        return;
+      }
+
+      final openRelease = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(strings.aboutUpdateAvailableTitle),
+          content: Text(strings.aboutUpdateAvailableMessage(release.version)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(strings.aboutUpdateLater),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(strings.aboutUpdateOpenRelease),
+            ),
+          ],
+        ),
+      );
+      if (openRelease != true || !mounted) return;
+
+      final opened = await launchUrl(
+        release.uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!opened && mounted) {
+        _showMessage(strings.aboutReleaseOpenFailed);
+      }
+    } catch (_) {
+      if (mounted) _showMessage(strings.aboutUpdateCheckFailed);
+    } finally {
+      if (mounted) setState(() => _checkingForUpdates = false);
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
 

@@ -854,6 +854,60 @@ abstract class AppLocalizations {
   /// **'版本 {version}'**
   String aboutVersion(String version);
 
+  /// No description provided for @aboutCheckForUpdates.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新'**
+  String get aboutCheckForUpdates;
+
+  /// No description provided for @aboutCheckForUpdatesChecking.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在检查更新…'**
+  String get aboutCheckForUpdatesChecking;
+
+  /// No description provided for @aboutAlreadyLatest.
+  ///
+  /// In zh, this message translates to:
+  /// **'已经是最新版本了。'**
+  String get aboutAlreadyLatest;
+
+  /// No description provided for @aboutUpdateAvailableTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'发现新版本'**
+  String get aboutUpdateAvailableTitle;
+
+  /// No description provided for @aboutUpdateAvailableMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'发现新版本 {version}，是否前往 GitHub Release 页面下载？'**
+  String aboutUpdateAvailableMessage(String version);
+
+  /// No description provided for @aboutUpdateLater.
+  ///
+  /// In zh, this message translates to:
+  /// **'稍后'**
+  String get aboutUpdateLater;
+
+  /// No description provided for @aboutUpdateOpenRelease.
+  ///
+  /// In zh, this message translates to:
+  /// **'前往 Release'**
+  String get aboutUpdateOpenRelease;
+
+  /// No description provided for @aboutUpdateCheckFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新失败，请稍后重试。'**
+  String get aboutUpdateCheckFailed;
+
+  /// No description provided for @aboutReleaseOpenFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法打开 GitHub Release 页面。'**
+  String get aboutReleaseOpenFailed;
+
   /// No description provided for @aboutGuidanceTitle.
   ///
   /// In zh, this message translates to:

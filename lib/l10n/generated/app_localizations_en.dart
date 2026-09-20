@@ -443,6 +443,36 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get aboutCheckForUpdates => 'Check for updates';
+
+  @override
+  String get aboutCheckForUpdatesChecking => 'Checking for updates…';
+
+  @override
+  String get aboutAlreadyLatest => 'You\'re using the latest version.';
+
+  @override
+  String get aboutUpdateAvailableTitle => 'Update available';
+
+  @override
+  String aboutUpdateAvailableMessage(String version) {
+    return 'Version $version is available. Open the GitHub Release page to download it?';
+  }
+
+  @override
+  String get aboutUpdateLater => 'Later';
+
+  @override
+  String get aboutUpdateOpenRelease => 'Open Release';
+
+  @override
+  String get aboutUpdateCheckFailed => 'Unable to check for updates.';
+
+  @override
+  String get aboutReleaseOpenFailed =>
+      'Unable to open the GitHub Release page.';
+
+  @override
   String get aboutGuidanceTitle => 'The 20-20-20 rule';
 
   @override

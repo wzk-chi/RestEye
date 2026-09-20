@@ -445,6 +445,10 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  if (message == WM_EXITSIZEMOVE) {
+    SaveWindowNormalRect(hwnd);
+  }
+
   if (message == WM_CLOSE) {
     if (minimize_to_tray_on_close_ && tray_icon_added_ && !close_requested_) {
       ShowWindow(hwnd, SW_HIDE);

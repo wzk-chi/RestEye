@@ -30,7 +30,7 @@ Windows runner 使用当前用户注册表保存几何信息：
 
 `FlutterWindow::OnCreate()` 在窗口创建完成后、Flutter 首帧显示前读取该值，并使用 `SetWindowPos` 恢复窗口。恢复值使用屏幕物理像素，不再经过初始 `Create()` 的 DPI 缩放。
 
-真正关闭的 `WM_CLOSE` 路径在退出握手完成后保存 `GetWindowPlacement()` 返回的 `rcNormalPosition`。隐藏到托盘的 `WM_CLOSE` 分支在返回前不保存；从托盘退出最终进入同一真正关闭路径，因此会保存几何信息。
+窗口完成移动或调整大小时，Windows 在 `WM_EXITSIZEMOVE` 中保存 `GetWindowPlacement()` 返回的 `rcNormalPosition`；真正关闭的 `WM_CLOSE` 路径在退出握手完成后再次保存。隐藏到托盘的 `WM_CLOSE` 分支仍不额外写入注册表，但最近一次普通窗口几何已经在移动或调整大小结束时持久化；从托盘退出最终进入同一真正关闭路径。
 
 ### macOS
 
